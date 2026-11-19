@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/* 亮暗主題:顏色都定義成變數,data-theme 由使用者切換,未選時跟隨系統 */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --card-2: #f8f9fb;
+  --border: #e3e6eb;
+  --fg: #1a1d23;
+  --muted: #6b7280;
+  --accent: #3b6ef5;
+  --ok: #16a34a;
+  --warn: #d97706;
+  --stop: #dc2626;
+  --stale: #dc2626;
+  --none: #9ca3af;
+  --paper: #ea7a12;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1115;
+    --card: #181b21;
+    --card-2: #1f232b;
+    --border: #2a2f39;
+    --fg: #e7e9ee;
+    --muted: #9aa3b2;
+    --accent: #6d93ff;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --stop: #f87171;
+    --stale: #f87171;
+    --none: #6b7280;
+    --paper: #fb923c;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f1115;
+  --card: #181b21;
+  --card-2: #1f232b;
+  --border: #2a2f39;
+  --fg: #e7e9ee;
+  --muted: #9aa3b2;
+  --accent: #6d93ff;
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --stop: #f87171;
+  --stale: #f87171;
+  --none: #6b7280;
+  --paper: #fb923c;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-card-2: var(--card-2);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-stop: var(--stop);
+  --color-stale: var(--stale);
+  --color-none: var(--none);
+  --color-paper: var(--paper);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  font-family:
+    system-ui, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

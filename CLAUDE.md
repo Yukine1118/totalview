@@ -1,0 +1,83 @@
+# CLAUDE.md — AI 作戰室 v2
+
+給 Claude Code 與未來的自己看的專案說明。詳細計畫見 `docs/plan.md`。
+
+## 專案是什麼
+個人儀表板網站:AI 訂閱用量、bot 閉環狀態、真實/模擬部位、策略績效。
+v1 是單頁 HTML(`ai-war-room-v1.html`,只當視覺參考,**目前尚未放進 repo**)。
+v2 保留 v1 的資訊與風格:**單欄、卡片、亮暗主題**。
+
+使用者是 Claude Code 新手:用白話解釋決定;**每個階段完成後停下來讓使用者確認**。
+
+## 硬性原則(最高優先,任何改動都不能違反)
+1. 部署 Vercel,手機與電腦都要好看(RWD)。
+2. **一定要登入才能看**:GitHub OAuth,只允許帳號 `Yukine1118`(同時比對數字 id `ALLOWED_GITHUB_ID`)。不靠隱藏網址。
+   - `src/middleware.ts` 擋所有頁面與 `/api/*`;伺服器端讀資料前再用 `getAllowedSession()` 檢查一次。
+   - 新增頁面 / API 時,把路徑加進 `tests/e2e/auth.spec.ts` 的清單。
+3. 網站以唯讀為主。唯一寫入 = 登入後貼 JSON 匯入(先驗證、顯示預覽、保留歷史版本可還原)。**不做任何下單或交易功能。**
+4. **不存放任何有交易或提款權限的 key。** secret 只放 `.env.local` / Vercel 環境變數。`SUPABASE_SERVICE_ROLE_KEY` 只在伺服器端用,禁止 `NEXT_PUBLIC_` 前綴。commit 前跑 `npm run check:secrets`。
+5. **不編造數據。** 沒資料顯示「無資料」;範例資料一律標示 **DEMO**。匯率沒有來源就不換算。
+6. 每個數字旁顯示「資料時間」;超過預期更新時間用顏色警示「資料過期」(設定在 `src/config/freshness.ts`,第 2 階段建立)。
+
+## 更新頻率(用來判斷是否過期)
+- AI 用量:自動來源每幾分鐘;手動來源每天。
+- 真實持股:盤後。台股收盤後每日一次;加密貨幣以每日收線(00:00 UTC)為準。
+- 模擬交易、策略績效、bot 狀態:跟著各 bot 的執行排程。
+
+## 頁面
+- `/` 總覽:A. AI 用量卡片(Claude Pro、Gemini Pro、Grok Premium、Google AI Studio;已用比例、重置時間、來源 自動/手動、最後更新)B. bot 閉環狀態(ok/warn/stop、最後執行、備註)C. GitHub 工作進度(最近 commit、open issues/PR)
+- `/portfolio/real` 真實部位、`/portfolio/paper` 模擬部位(整頁「模擬」色帶,兩頁必須一眼分得出來)。持股明細、成本、現價、未實現損益、總資產、資產曲線、bot 摘要;台股與加密貨幣幣別分開或可換算。策略績效表(報酬、最大回撤、交易次數、樣本外、迷你曲線)放模擬頁。
+- `/import` 貼 JSON 匯入(可一次貼多個 bot,自動辨識 bot,錯誤指出第幾行)、`/import/history` 歷史版本與還原。
+
+## 資料流
+- 第一版:Grok bot 回報最後附固定格式 JSON(schema `aiwr/v1`,外包 `===AIWR-BEGIN===` / `===AIWR-END===`),使用者複製後登入貼上。
+  區塊:ai_usage、bot_status、positions、trades、equity_snapshots、strategies;每筆都有 bot 名稱與資料時間(含時區)。
+- 給 Grok 的格式說明:`docs/grok-output-format.md`(第 4 階段產出)。
+- 資料庫:Supabase,所有表開 RLS 且無公開 policy;每次匯入是一個版本,還原 = 把舊版本複製成新版本(只增不刪)。
+
+## 技術與指令
+Next.js 15 (App Router) + TypeScript + Tailwind v4、Auth.js v5、Supabase、Vercel。
+```
+npm run dev            # 本機開發(需要 .env.local)
+npm run build          # 正式 build
+npm test               # 單元測試(Vitest)
+npm run test:e2e       # E2E(Playwright,用假環境變數,不需要真的 OAuth)
+npm run typecheck
+npm run lint
+npm run check:secrets  # 掃描是否誤放 key
+```
+E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 session cookie;**正式程式碼裡沒有任何登入後門**。
+
+## 目錄
+- `src/auth.ts` 登入設定、`getAllowedSession()`
+- `src/lib/allowlist.ts` 白名單判斷(純函式,有單元測試)
+- `src/middleware.ts` 全站守門
+- `src/components/` 共用 UI(`AppShell`、`Card`、`ThemeToggle`)
+- `scripts/check-secrets.mjs` key 掃描
+- `docs/` 計畫與文件
+
+## 階段進度
+- [x] 1. 骨架 + 登入
+- [ ] 2. 頁面 1(DEMO)
+- [ ] 3. 頁面 2 real / paper(DEMO)
+- [ ] 4. JSON 匯入 + 歷史還原 + Supabase 建表 + Grok 格式說明
+- [ ] 5. 部署 Vercel(建議可提前到第 1 階段後)
+- [ ] 6. GitHub 進度
+- [ ] 7. 各服務用量 adapter(依可行性調查)
+
+## AI 用量可行性(初步,第 7 階段實測)
+| 服務 | 結論 |
+|---|---|
+| Claude Pro | 無公開 API 查訂閱額度 → 手動。選配:本機腳本讀 Claude Code 的 `~/.claude/projects` JSONL 後主動推送 |
+| Gemini Pro(訂閱) | 無公開 API → 手動 |
+| Grok Premium | 無公開 API → 手動 |
+| Google AI Studio / Gemini API | 可能可用 Cloud Monitoring API 唯讀查詢,需驗證;不行就手動 |
+原則:不爬蟲、不用登入 cookie、不違反服務條款;每個服務一個 adapter。
+
+## 待辦(第二版,先不做)
+- [ ] 評估改用 GitHub Actions 定時呼叫 xAI API 執行 bot 邏輯,直接寫入資料庫,做到全自動。
+  - 需評估:xAI API 費用、bot 邏輯能否脫離 Grok 對話、寫入端點的驗證方式(獨立的寫入 token,只能寫不能讀)、失敗通知。
+
+## 注意事項
+- Supabase 免費專案閒置約一週會暫停,需到 Supabase 後台按 Restore 喚醒。
+- 台股國定假日清單需手動維護在設定檔。
