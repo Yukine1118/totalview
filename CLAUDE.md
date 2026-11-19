@@ -36,6 +36,13 @@ v2 保留 v1 的資訊與風格:**單欄(最寬 980px)、卡片(圓角 10px)、�
 - 給 Grok 的格式說明:`docs/grok-output-format.md`(第 4 階段產出)。
 - 資料庫:Supabase,所有表開 RLS 且無公開 policy;每次匯入是一個版本,還原 = 把舊版本複製成新版本(只增不刪)。
 
+## 部署
+- Vercel 專案 `ai-war-room`(帳號 yukine1118),正式網址 https://ai-war-room-winerun.vercel.app
+- Production branch = repo 預設分支(目前是 `claude/busy-franklin-t9cy44`);push 就會自動部署。
+- Vercel 環境變數:`AUTH_SECRET`(sensitive)、`ALLOWED_GITHUB_LOGIN`、`ALLOWED_GITHUB_ID`=339299954;
+  `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` 由使用者在 Vercel 後台自行填入(不經過對話)。
+- GitHub OAuth App callback:`https://ai-war-room-winerun.vercel.app/api/auth/callback/github`
+
 ## 技術與指令
 Next.js 15 (App Router) + TypeScript + Tailwind v4、Auth.js v5、Supabase、Vercel。
 ```
@@ -62,7 +69,7 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
 - [ ] 2. 頁面 1(DEMO)
 - [ ] 3. 頁面 2 real / paper(DEMO)
 - [ ] 4. JSON 匯入 + 歷史還原 + Supabase 建表 + Grok 格式說明
-- [ ] 5. 部署 Vercel(建議可提前到第 1 階段後)
+- [x] 5. 部署 Vercel(已提前完成;GitHub OAuth App 待使用者建立)
 - [ ] 6. GitHub 進度
 - [ ] 7. 各服務用量 adapter(依可行性調查)
 
