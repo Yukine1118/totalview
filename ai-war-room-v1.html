@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 作戰室</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* layout idea: 單欄儀表板,摘要在上(額度),流程在中(閉環),明細在下(策略) */
+:root{
+  --bg:#f4f5f2; --card:#ffffff; --ink:#1b2320; --mute:#66706b; --line:#dfe3de;
+  --accent:#0f766e; --good:#15803d; --warn:#b45309; --bad:#b91c1c; --track:#e6e9e4;
+  --font:"Noto Sans TC",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121715; --card:#1a211e; --ink:#e8ece9; --mute:#93a09a; --line:#2b3531;
+    --accent:#2dd4bf; --good:#4ade80; --warn:#fbbf24; --bad:#f87171; --track:#2b3531; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121715; --card:#1a211e; --ink:#e8ece9; --mute:#93a09a; --line:#2b3531;
+  --accent:#2dd4bf; --good:#4ade80; --warn:#fbbf24; --bad:#f87171; --track:#2b3531; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);line-height:1.55;padding:20px 16px 56px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px}
+h1{font-size:1.6rem;margin:0;text-wrap:balance}
+h2{font-size:1.05rem;margin:0 0 10px;text-wrap:balance}
+.sub{color:var(--mute);font-size:.88rem}
+.badge{font-size:.75rem;border:1px solid var(--warn);color:var(--warn);border-radius:999px;padding:2px 10px;white-space:nowrap}
+section{display:flex;flex-direction:column}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.name{font-weight:700}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.big{font-size:1.7rem;font-weight:600}
+.bar{height:10px;background:var(--track);border-radius:6px;overflow:hidden;margin:8px 0}
+.bar>i{display:block;height:100%;border-radius:6px;background:var(--good)}
+.bar.warn>i{background:var(--warn)} .bar.bad>i{background:var(--bad)}
+.ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:.82rem;color:var(--mute)}
+input[type=number],input[type=date],input[type=text],textarea{
+  font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+input[type=number]{width:76px;font-family:var(--mono)}
+textarea{width:100%;min-height:150px;font-family:var(--mono);font-size:.8rem}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:5px 12px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] button.primary{color:#06201c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) button.primary{color:#06201c}}
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px}
+.node{flex:1 1 170px;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--good);border-radius:10px;padding:10px 12px}
+.node.warn{border-left-color:var(--warn)} .node.stop{border-left-color:var(--bad)}
+.node .st{font-size:.75rem;font-weight:700}
+.node.ok .st{color:var(--good)} .node.warn .st{color:var(--warn)} .node.stop .st{color:var(--bad)}
+.arrow{align-self:center;color:var(--mute);font-size:1.3rem}
+.loopnote{margin-top:10px;font-size:.85rem;color:var(--mute);border:1px dashed var(--line);border-radius:8px;padding:8px 12px}
+.loopnote b{color:var(--warn)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.9rem;background:var(--card);border:1px solid var(--line);border-radius:10px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.78rem;color:var(--mute);font-weight:500}
+td.r,th.r{text-align:right}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.chip{font-size:.72rem;border-radius:999px;padding:1px 8px;border:1px solid var(--warn);color:var(--warn)}
+.chip.ok{border-color:var(--good);color:var(--good)}
+svg.spark{width:110px;height:30px;display:block}
+details{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+summary{cursor:pointer;font-weight:700}
+pre{margin:8px 0;white-space:pre-wrap;font-family:var(--mono);font-size:.78rem;color:var(--mute)}
+.msg{font-size:.85rem;margin-top:6px;min-height:1.2em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>AI 作戰室</h1>
+      <div class="sub" id="updated"></div>
+    </div>
+    <span class="badge" id="sampleBadge">範例資料,請改成你的數字</span>
+  </header>
+
+  <section id="ai">
+    <h2>AI 額度</h2>
+    <div class="grid" id="aiGrid"></div>
+  </section>
+
+  <section id="loop">
+    <h2>bot 閉環</h2>
+    <div class="flow" id="flow"></div>
+    <div class="loopnote"><b>建議加一道關卡:</b>策略回測通過後,先用沒參與優化的期間(樣本外)再驗證一次,才送回模擬交易。這樣可以降低回測漂亮、實盤變差的風險。</div>
+  </section>
+
+  <section id="perf">
+    <h2>幣圈與策略績效</h2>
+    <div class="tw"><table id="stratTable"></table></div>
+  </section>
+
+  <details id="editor">
+    <summary>更新資料(貼上 JSON)</summary>
+    <p class="sub">把 bot 或我整理好的 JSON 貼在這裡,按「套用」就會更新畫面。資料只存在這個瀏覽器,換裝置不會同步。</p>
+    <textarea id="jsonBox" spellcheck="false" aria-label="JSON 資料"></textarea>
+    <div class="ctrl" style="margin-top:8px">
+      <button class="primary" id="applyBtn" type="button">套用</button>
+      <button id="resetBtn" type="button">還原初始資料</button>
+      <button id="copyBtn" type="button">複製目前資料</button>
+    </div>
+    <div class="msg" id="msg" role="status"></div>
+  </details>
+</div>
+
+<script>
+(function(){
+  var KEY = "ai-war-room-v2";
+  function curve(seed, drift, vol){
+    var v = 100, out = [v], s = seed;
+    for (var i = 0; i < 40; i++){
+      s = (s * 9301 + 49297) % 233280;
+      var r = s / 233280 - 0.5;
+      v = v * (1 + drift + r * vol);
+      out.push(Math.round(v * 10) / 10);
+    }
+    return out;
+  }
+  var SAMPLE = {
+    updated: "2026-11-15 19:00",
+    isSample: true,
+    ai: [
+      { name: "Claude", used: 40, resetAt: "2026-11-20", note: "Fable 5.2 限時開放中" },
+      { name: "Grok", used: 100, resetAt: "2026-11-22", note: "額度用完,bot 優化暫停" },
+      { name: "Gemini", used: 55, resetAt: "2026-11-18", note: "" }
+    ],
+    bots: [
+      { name: "股市日報", status: "ok", last: "11/15 07:30", note: "台股晨間快訊已送出" },
+      { name: "幣圈情報員", status: "ok", last: "11/15 08:00", note: "加密貨幣晨報已送出" },
+      { name: "模擬交易室", status: "ok", last: "11/15 06:10", note: "收線完成,帳本已更新" },
+      { name: "程式交易", status: "warn", last: "11/14 22:40", note: "等待 Grok 額度,回測暫停" }
+    ],
+    strategies: [
+      { name: "RSI 背離(老貓)", market: "BTC", ret: 18.4, mdd: -12.1, trades: 64, oos: null, curve: curve(11, 0.004, 0.05) },
+      { name: "SMA60/EMA676 回拉", market: "BTC", ret: -3.2, mdd: -21.5, trades: 38, oos: -5.0, curve: curve(23, -0.001, 0.05) },
+      { name: "Vegas 通道", market: "ETH", ret: 9.7, mdd: -15.3, trades: 52, oos: 4.1, curve: curve(37, 0.002, 0.05) }
+    ]
+  };
+
+  // [v2 註記] 原本這裡有一段真實 bot 回報資料。因為 repo 是公開的,已移除;只保留上方的範例資料當版面參考。
+
+  var state = load();
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if (raw){ var o = JSON.parse(raw); if (valid(o)) return o; }
+    }catch(e){}
+    return clone(SAMPLE);
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+  function valid(o){
+    return o && Array.isArray(o.ai) && Array.isArray(o.bots) && Array.isArray(o.strategies);
+  }
+
+  function h(tag, attrs, kids){
+    var el = document.createElement(tag);
+    if (attrs) for (var k in attrs){
+      if (k === "class") el.className = attrs[k]; else el.setAttribute(k, attrs[k]);
+    }
+    (kids || []).forEach(function(c){
+      if (c == null) return;
+      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    });
+    return el;
+  }
+  function clamp(n){ n = Number(n); if (isNaN(n)) n = 0; return Math.max(0, Math.min(100, n)); }
+  function daysLeft(d){
+    var t = new Date(d + "T00:00:00"); if (isNaN(t)) return null;
+    var now = new Date(); now.setHours(0,0,0,0);
+    return Math.round((t - now) / 86400000);
+  }
+
+  function renderAI(){
+    var g = document.getElementById("aiGrid"); g.textContent = "";
+    state.ai.forEach(function(a, idx){
+      var unk = a.used == null || a.used === "";
+      var used = unk ? 0 : clamp(a.used), left = 100 - used;
+      var cls = used >= 90 ? "bad" : used >= 70 ? "warn" : "";
+      var dl = a.resetAt ? daysLeft(a.resetAt) : null;
+      var reset = dl == null ? "" : (dl < 0 ? "已過重置日" : dl === 0 ? "今天重置" : dl + " 天後重置");
+      var num = h("input", { type: "number", min: "0", max: "100", value: unk ? "" : String(used), id: "used" + idx, "aria-label": a.name + " 已用百分比" });
+      var date = h("input", { type: "date", value: a.resetAt || "", id: "reset" + idx, "aria-label": a.name + " 重置日" });
+      num.addEventListener("change", function(){ a.used = num.value === "" ? null : clamp(num.value); save(); renderAI(); });
+      date.addEventListener("change", function(){ a.resetAt = date.value; save(); renderAI(); });
+      var bar = h("div", { class: "bar " + cls }, [ h("i", { style: "width:" + used + "%" }) ]);
+      g.appendChild(h("div", { class: "card" }, [
+        h("div", { class: "row" }, [ h("span", { class: "name" }, [a.name]), h("span", { class: "sub" }, [reset]) ]),
+        h("div", { class: "row" }, [ h("span", { class: "big num" }, [unk ? "未知" : left + "%"]), h("span", { class: "sub" }, [unk ? "請填已用 %" : "剩餘"]) ]),
+        bar,
+        h("div", { class: "ctrl" }, [ h("label", { "for": "used" + idx }, ["已用 %"]), num, h("label", { "for": "reset" + idx }, ["重置日"]), date ]),
+        a.note ? h("div", { class: "sub", style: "margin-top:6px" }, [a.note]) : null
+      ]));
+    });
+  }
+
+  var LABEL = { ok: "正常", warn: "注意", stop: "停擺" };
+  function renderFlow(){
+    var f = document.getElementById("flow"); f.textContent = "";
+    state.bots.forEach(function(b, i){
+      var st = LABEL[b.status] ? b.status : "ok";
+      f.appendChild(h("div", { class: "node " + st }, [
+        h("div", { class: "st" }, [LABEL[st]]),
+        h("div", { class: "name" }, [b.name]),
+        h("div", { class: "sub num" }, [b.last || ""]),
+        h("div", { class: "sub" }, [b.note || ""])
+      ]));
+      if (i < state.bots.length - 1) f.appendChild(h("div", { class: "arrow", "aria-hidden": "true" }, ["→"]));
+    });
+  }
+
+  function spark(vals){
+    var W = 110, H = 30, min = Math.min.apply(null, vals), max = Math.max.apply(null, vals), rng = max - min || 1;
+    var pts = vals.map(function(v, i){
+      return (i / (vals.length - 1) * (W - 4) + 2).toFixed(1) + "," + (H - 3 - (v - min) / rng * (H - 6)).toFixed(1);
+    });
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("class", "spark");
+    var up = vals[vals.length - 1] >= vals[0];
+    var pl = document.createElementNS(ns, "polyline");
+    pl.setAttribute("points", pts.join(" ")); pl.setAttribute("fill", "none");
+    pl.setAttribute("stroke", up ? "var(--good)" : "var(--bad)"); pl.setAttribute("stroke-width", "1.6");
+    svg.appendChild(pl);
+    var last = pts[pts.length - 1].split(",");
+    var c = document.createElementNS(ns, "circle");
+    c.setAttribute("cx", last[0]); c.setAttribute("cy", last[1]); c.setAttribute("r", "2.6");
+    c.setAttribute("fill", up ? "var(--good)" : "var(--bad)");
+    svg.appendChild(c);
+    return svg;
+  }
+  function pct(n){ return (n > 0 ? "+" : "") + Number(n).toFixed(1) + "%"; }
+  function renderTable(){
+    var t = document.getElementById("stratTable"); t.textContent = "";
+    var head = h("tr", null, [
+      h("th", null, ["策略"]), h("th", null, ["市場"]), h("th", { class: "r" }, ["報酬"]),
+      h("th", { class: "r" }, ["最大回撤"]), h("th", { class: "r" }, ["交易數"]),
+      h("th", { class: "r" }, ["樣本外"]), h("th", null, ["資金曲線"])
+    ]);
+    t.appendChild(h("thead", null, [head]));
+    var body = h("tbody");
+    state.strategies.forEach(function(s){
+      var oosCell = (s.oos == null)
+        ? h("span", { class: "chip" }, ["未驗證"])
+        : h("span", { class: "num " + (s.oos >= 0 ? "pos" : "neg") }, [pct(s.oos)]);
+      body.appendChild(h("tr", null, [
+        h("td", { class: "name" }, [s.name]),
+        h("td", null, [s.market]),
+        h("td", { class: "r num " + (s.ret >= 0 ? "pos" : "neg") }, [pct(s.ret)]),
+        h("td", { class: "r num" + (s.mdd ? " neg" : "") }, [s.mdd == null ? "—" : Number(s.mdd).toFixed(1) + "%"]),
+        h("td", { class: "r num" }, [s.trades == null ? "—" : String(s.trades)]),
+        h("td", { class: "r" }, [oosCell]),
+        h("td", null, [ Array.isArray(s.curve) && s.curve.length > 1 ? spark(s.curve) : "—" ])
+      ]));
+    });
+    t.appendChild(body);
+  }
+
+  function renderAll(){
+    document.getElementById("updated").textContent = "更新於 " + (state.updated || "—");
+    document.getElementById("sampleBadge").style.display = state.isSample ? "" : "none";
+    renderAI(); renderFlow(); renderTable();
+    document.getElementById("jsonBox").value = JSON.stringify(state, null, 2);
+  }
+  function say(t, bad){
+    var m = document.getElementById("msg"); m.textContent = t; m.style.color = bad ? "var(--bad)" : "var(--good)";
+  }
+
+  document.getElementById("applyBtn").addEventListener("click", function(){
+    try{
+      var o = JSON.parse(document.getElementById("jsonBox").value);
+      if (!valid(o)) throw new Error("需要 ai、bots、strategies 三個陣列");
+      o.isSample = false;
+      if (!o.updated) o.updated = new Date().toLocaleString("zh-TW");
+      state = o; save(); renderAll(); pushDb(); say("已套用");
+    }catch(e){ say("格式錯誤:" + e.message, true); }
+  });
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    state = clone(SAMPLE); save(); renderAll(); say("已還原範例");
+  });
+  document.getElementById("copyBtn").addEventListener("click", function(){
+    var v = JSON.stringify(state, null, 2);
+    try{ navigator.clipboard.writeText(v).then(function(){ say("已複製"); }, function(){ say("無法複製,請手動選取文字框內容", true); }); }
+    catch(e){ say("無法複製,請手動選取文字框內容", true); }
+  });
+
+  var dbRef = null;
+  function pushDb(){
+    if (!dbRef) return;
+    try{ var p = dbRef.set({ json: JSON.stringify(state) }); if (p && p.catch) p.catch(function(){}); }catch(e){}
+  }
+  renderAll();
+  (async function(){
+    try{
+      if (!window.claude || !window.claude.use) return;
+      var db = await window.claude.use("db");
+      if (!db) return;
+      dbRef = db.doc("dashboard/state");
+      dbRef.onSnapshot(function(snap){
+        try{
+          var d = (snap && typeof snap.data === "function") ? snap.data() : snap;
+          if (d && d.json){
+            var o = JSON.parse(d.json);
+            if (valid(o)){ state = o; save(); renderAll(); }
+          }
+        }catch(e){}
+      });
+    }catch(e){}
+  })();
+})();
+</script>
+</body>
+</html>

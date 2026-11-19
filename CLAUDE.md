@@ -4,8 +4,9 @@
 
 ## 專案是什麼
 個人儀表板網站:AI 訂閱用量、bot 閉環狀態、真實/模擬部位、策略績效。
-v1 是單頁 HTML(`ai-war-room-v1.html`,只當視覺參考,**目前尚未放進 repo**)。
-v2 保留 v1 的資訊與風格:**單欄、卡片、亮暗主題**。
+v1 是單頁 HTML(根目錄 `ai-war-room-v1.html`,只當參考,不部署)。
+v2 保留 v1 的資訊與風格:**單欄(最寬 980px)、卡片(圓角 10px)、亮暗主題**;配色、字型(Noto Sans TC + JetBrains Mono 數字)沿用 v1,定義在 `src/app/globals.css`。
+模擬頁專用色為紫色 `--paper`,刻意避開狀態色(綠 ok / 黃 warn / 紅 stop)。
 
 使用者是 Claude Code 新手:用白話解釋決定;**每個階段完成後停下來讓使用者確認**。
 
@@ -79,5 +80,6 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
   - 需評估:xAI API 費用、bot 邏輯能否脫離 Grok 對話、寫入端點的驗證方式(獨立的寫入 token,只能寫不能讀)、失敗通知。
 
 ## 注意事項
+- **repo 是公開的(public)。** 不要 commit 任何真實資料(持股、損益、bot 回報、用量數字);真實資料只進 Supabase。範例一律標 DEMO。
 - Supabase 免費專案閒置約一週會暫停,需到 Supabase 後台按 Restore 喚醒。
 - 台股國定假日清單需手動維護在設定檔。

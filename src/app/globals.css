@@ -1,75 +1,90 @@
 @import "tailwindcss";
 
-/* 亮暗主題:顏色都定義成變數,data-theme 由使用者切換,未選時跟隨系統 */
+/*
+ * 亮暗主題:配色沿用 v1(ai-war-room-v1.html)。
+ * 顏色都定義成變數;data-theme 由使用者切換,未選時跟隨系統。
+ * 對照 v1:ink→fg、mute→muted、line→border、good→ok、bad→stop。
+ */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
-  --bg: #f4f5f7;
+  --bg: #f4f5f2;
   --card: #ffffff;
-  --card-2: #f8f9fb;
-  --border: #e3e6eb;
-  --fg: #1a1d23;
-  --muted: #6b7280;
-  --accent: #3b6ef5;
-  --ok: #16a34a;
-  --warn: #d97706;
-  --stop: #dc2626;
-  --stale: #dc2626;
-  --none: #9ca3af;
-  --paper: #ea7a12;
+  --fg: #1b2320;
+  --muted: #66706b;
+  --border: #dfe3de;
+  --track: #e6e9e4;
+  --accent: #0f766e;
+  --on-accent: #ffffff;
+  --ok: #15803d;
+  --warn: #b45309;
+  --stop: #b91c1c;
+  --stale: #b91c1c;
+  --none: #9aa39e;
+  /* 模擬頁專用色(紫色,刻意避開 ok/warn/stop 的綠黃紅,不會和狀態色混淆) */
+  --paper: #6d28d9;
+  --paper-bg: #f3f0fa;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f1115;
-    --card: #181b21;
-    --card-2: #1f232b;
-    --border: #2a2f39;
-    --fg: #e7e9ee;
-    --muted: #9aa3b2;
-    --accent: #6d93ff;
-    --ok: #22c55e;
-    --warn: #f59e0b;
+    --bg: #121715;
+    --card: #1a211e;
+    --fg: #e8ece9;
+    --muted: #93a09a;
+    --border: #2b3531;
+    --track: #2b3531;
+    --accent: #2dd4bf;
+    --on-accent: #06201c;
+    --ok: #4ade80;
+    --warn: #fbbf24;
     --stop: #f87171;
     --stale: #f87171;
-    --none: #6b7280;
-    --paper: #fb923c;
+    --none: #6b7570;
+    --paper: #a78bfa;
+    --paper-bg: #17151f;
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #0f1115;
-  --card: #181b21;
-  --card-2: #1f232b;
-  --border: #2a2f39;
-  --fg: #e7e9ee;
-  --muted: #9aa3b2;
-  --accent: #6d93ff;
-  --ok: #22c55e;
-  --warn: #f59e0b;
+  --bg: #121715;
+  --card: #1a211e;
+  --fg: #e8ece9;
+  --muted: #93a09a;
+  --border: #2b3531;
+  --track: #2b3531;
+  --accent: #2dd4bf;
+  --on-accent: #06201c;
+  --ok: #4ade80;
+  --warn: #fbbf24;
   --stop: #f87171;
   --stale: #f87171;
-  --none: #6b7280;
-  --paper: #fb923c;
+  --none: #6b7570;
+  --paper: #a78bfa;
+  --paper-bg: #17151f;
   color-scheme: dark;
 }
 
 @theme inline {
   --color-bg: var(--bg);
   --color-card: var(--card);
-  --color-card-2: var(--card-2);
-  --color-border: var(--border);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-track: var(--track);
   --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
   --color-ok: var(--ok);
   --color-warn: var(--warn);
   --color-stop: var(--stop);
   --color-stale: var(--stale);
   --color-none: var(--none);
   --color-paper: var(--paper);
+  --color-paper-bg: var(--paper-bg);
+  --font-sans: "Noto Sans TC", system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 html,
@@ -79,12 +94,18 @@ body {
 }
 
 body {
-  font-family:
-    system-ui, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei",
-    sans-serif;
+  font-family: var(--font-sans);
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 
-.tabular {
+/* 數字:等寬字 + 對齊(沿用 v1 的 .num) */
+.num {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

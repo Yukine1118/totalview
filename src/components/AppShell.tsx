@@ -9,13 +9,13 @@ const NAV = [
   { href: "/import", label: "匯入" },
 ];
 
-/** 共用外框:頂部導覽 + 單欄內容(手機與電腦都用同一欄,最寬 760px) */
+/** 共用外框:頂部導覽 + 單欄內容(沿用 v1:最寬 980px) */
 export function AppShell({ login, children }: { login?: string; children: React.ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-[760px] px-4 pb-16">
+    <div className="mx-auto w-full max-w-[980px] px-4 pb-16">
       <header className="sticky top-0 z-10 -mx-4 mb-4 border-b border-border bg-bg/90 px-4 py-3 backdrop-blur">
         <div className="flex items-center justify-between gap-2">
-          <Link href="/" className="font-semibold">
+          <Link href="/" className="text-lg font-bold">
             AI 作戰室
           </Link>
           <div className="flex items-center gap-2">
@@ -40,16 +40,16 @@ export function AppShell({ login, children }: { login?: string; children: React.
           ))}
         </nav>
       </header>
-      <main className="flex flex-col gap-4">{children}</main>
+      <main className="flex flex-col gap-[22px]">{children}</main>
     </div>
   );
 }
 
 export function Card({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">{title}</h2>
+    <section className="rounded-[10px] border border-border bg-card px-4 py-3.5">
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <h2 className="text-[1.05rem] font-bold">{title}</h2>
         {right}
       </div>
       {children}

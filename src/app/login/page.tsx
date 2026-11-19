@@ -19,8 +19,8 @@ export default async function LoginPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-4">
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h1 className="text-lg font-semibold">AI 作戰室</h1>
+      <div className="rounded-[10px] border border-border bg-card p-6">
+        <h1 className="text-[1.6rem] font-bold">AI 作戰室</h1>
         <p className="mt-1 text-sm text-muted">僅限授權帳號登入。</p>
         {message && (
           <p role="alert" className="mt-4 rounded-md border border-stop/40 bg-stop/10 px-3 py-2 text-sm text-stop">
@@ -36,7 +36,7 @@ export default async function LoginPage({
         >
           <button
             type="submit"
-            className="w-full rounded-lg bg-fg px-4 py-2.5 text-sm font-medium text-bg hover:opacity-90"
+            className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-on-accent hover:opacity-90"
           >
             用 GitHub 登入
           </button>

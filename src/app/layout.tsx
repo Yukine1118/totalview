@@ -20,6 +20,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="zh-Hant" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* 字型沿用 v1:Noto Sans TC(內文)+ JetBrains Mono(數字) */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        />
       </head>
       <body className="min-h-dvh antialiased">{children}</body>
     </html>
