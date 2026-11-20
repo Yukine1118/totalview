@@ -43,6 +43,10 @@ v2 保留 v1 的資訊與風格:**單欄(最寬 980px)、卡片(圓角 10px)、�
   `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` 由使用者在 Vercel 後台自行填入(不經過對話)。
 - GitHub OAuth App callback:`https://ai-war-room-gamma.vercel.app/api/auth/callback/github`
 
+## 已知問題紀錄
+- GitHub OAuth 回呼會帶 `iss` 參數;next-auth 必須 ≥ 5.0.0-beta.32(@auth/core ≥ 0.41.3),
+  否則登入失敗(`unexpected "iss" response parameter value`)。`tests/unit/github-provider.test.ts` 會擋住降版。
+
 ## 技術與指令
 Next.js 15 (App Router) + TypeScript + Tailwind v4、Auth.js v5、Supabase、Vercel。
 ```
@@ -69,7 +73,7 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
 - [ ] 2. 頁面 1(DEMO)
 - [ ] 3. 頁面 2 real / paper(DEMO)
 - [ ] 4. JSON 匯入 + 歷史還原 + Supabase 建表 + Grok 格式說明
-- [x] 5. 部署 Vercel(已提前完成;GitHub OAuth App 待使用者建立)
+- [x] 5. 部署 Vercel(已提前完成,2026-11-20 使用者實測 GitHub 登入成功)
 - [ ] 6. GitHub 進度
 - [ ] 7. 各服務用量 adapter(依可行性調查)
 
