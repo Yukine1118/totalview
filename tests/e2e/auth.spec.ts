@@ -27,7 +27,7 @@ test.describe("登入後", () => {
   test("允許的帳號可以看到首頁", async ({ page, context }) => {
     await loginAs(context, "Yukine1118", "424242");
     await page.goto("/");
-    await expect(page.getByText("登入成功")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "AI 額度" })).toBeVisible();
     const res = await page.request.get("/api/me");
     expect(res.status()).toBe(200);
     expect(await res.json()).toEqual({ login: "Yukine1118" });
