@@ -20,7 +20,7 @@ export default async function Home() {
   const anyDemo = aiUsage.isDemo || bots.isDemo || github.isDemo;
 
   return (
-    <AppShell login={session.user.login}>
+    <AppShell login={session.user.login} active="/">
       {anyDemo && (
         <p role="note" className="rounded-[10px] border border-warn/60 bg-warn/10 px-4 py-2.5 text-sm text-warn">
           標示 <b>DEMO</b> 的區塊是虛構的範例資料,只用來看版面。匯入真實資料後會自動換掉。

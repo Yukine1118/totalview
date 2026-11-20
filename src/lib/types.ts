@@ -50,3 +50,65 @@ export type Overview = {
   bots: Section<BotStatus[]>;
   github: Section<GithubProgress>;
 };
+
+// ───────── 部位(第 3 階段) ─────────
+
+export type Account = "real" | "paper";
+export type Market = "TW" | "CRYPTO";
+
+export type Position = {
+  bot: string;
+  account: Account;
+  market: Market;
+  symbol: string;
+  name?: string;
+  qty: number;
+  avgCost: number;
+  /** 現價;null = 無報價 */
+  lastPrice: number | null;
+  currency: string; // TWD / USD / USDT …
+  /** 現價的時間 */
+  priceAsOf: string | null;
+  asOf: string | null;
+};
+
+export type EquityPoint = { at: string; equity: number };
+
+/** 一條資產曲線(一個幣別) */
+export type EquitySeries = {
+  bot: string;
+  account: Account;
+  market: Market;
+  currency: string;
+  points: EquityPoint[];
+  /** 最新一點的現金(若 bot 有回報) */
+  cash?: number | null;
+};
+
+export type BotSummary = { bot: string; text: string; asOf: string | null };
+
+/** 匯率:1 單位 base = rate 單位 quote。沒有就不換算。 */
+export type FxRate = { base: string; quote: string; rate: number; asOf: string | null; source: string };
+
+export type Strategy = {
+  bot: string;
+  name: string;
+  market: string;
+  returnPct: number | null;
+  maxDrawdownPct: number | null;
+  trades: number | null;
+  /** 樣本外報酬;null = 未驗證 */
+  oosReturnPct: number | null;
+  oosPeriod?: string;
+  curve: number[];
+  asOf: string | null;
+};
+
+export type Portfolio = {
+  account: Account;
+  positions: Section<Position[]>;
+  equity: Section<EquitySeries[]>;
+  summaries: Section<BotSummary[]>;
+  fx: Section<FxRate[]>;
+  strategies?: Section<Strategy[]>;
+};

@@ -66,6 +66,9 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
 - `src/middleware.ts` 全站守門
 - `src/components/` 共用 UI(`AppShell`、`Card`、`ThemeToggle`、`DataTime`(資料時間 + 過期警示)、`Section`、`DemoBadge`)
 - `src/components/overview/` 總覽頁元件(`UsageCards`、`BotFlow`、`GithubProgressCard`)
+- `src/components/portfolio/` 部位頁元件(`PortfolioView`、`StrategyTable`);`src/components/charts.tsx`(`Sparkline`、`EquityChart`,純 SVG)
+- `src/lib/portfolio.ts` 損益/幣別加總/匯率換算/格式(有單元測試)。**不同幣別不直接相加;沒有匯率就不換算(USDT 不視為 USD)。**
+- `AppShell` 的 `variant="paper"`:模擬頁的紫色外框 + 斜紋「模擬交易 PAPER」色帶
 - `src/config/freshness.ts` 過期門檻設定;`src/lib/freshness.ts` 判斷邏輯(有單元測試)
 - `src/lib/types.ts` 畫面資料型別;`src/lib/data/*` 伺服器端資料來源(目前回傳 DEMO);`src/lib/demo/*` DEMO 範例
 - `scripts/check-secrets.mjs` key 掃描
@@ -73,8 +76,8 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
 
 ## 階段進度
 - [x] 1. 骨架 + 登入
-- [x] 2. 頁面 1(DEMO)— 待使用者確認
-- [ ] 3. 頁面 2 real / paper(DEMO)
+- [x] 2. 頁面 1(DEMO)
+- [x] 3. 頁面 2 real / paper(DEMO)— 待使用者確認
 - [ ] 4. JSON 匯入 + 歷史還原 + Supabase 建表 + Grok 格式說明
 - [x] 5. 部署 Vercel(已提前完成,2026-11-20 使用者實測 GitHub 登入成功)
 - [ ] 6. GitHub 進度
