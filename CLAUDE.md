@@ -49,6 +49,8 @@ v2 保留 v1 的資訊與風格:**單欄(最寬 980px)、卡片(圓角 10px)、�
 - Production branch = repo 預設分支(目前是 `claude/busy-franklin-t9cy44`);push 就會自動部署。
 - Vercel 環境變數:`AUTH_SECRET`(sensitive)、`ALLOWED_GITHUB_LOGIN`、`ALLOWED_GITHUB_ID`=339299954;
   `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` 由使用者在 Vercel 後台自行填入(不經過對話)。
+  `SUPABASE_URL`(plain)、`SUPABASE_SERVICE_ROLE_KEY`(使用者填,sensitive)、`GITHUB_READ_TOKEN`(選填,使用者填;fine-grained 唯讀)。
+- Vercel 函式區域固定 `hnd1`(東京,`vercel.json`),和資料庫同區。
 - GitHub OAuth App callback:`https://ai-war-room-gamma.vercel.app/api/auth/callback/github`
 
 ## 已知問題紀錄
@@ -78,7 +80,11 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
 - `src/lib/portfolio.ts` 損益/幣別加總/匯率換算/格式(有單元測試)。**不同幣別不直接相加;沒有匯率就不換算(USDT 不視為 USD)。**
 - `AppShell` 的 `variant="paper"`:模擬頁的紫色外框 + 斜紋「模擬交易 PAPER」色帶
 - `src/config/freshness.ts` 過期門檻設定;`src/lib/freshness.ts` 判斷邏輯(有單元測試)
-- `src/lib/types.ts` 畫面資料型別;`src/lib/data/*` 伺服器端資料來源(目前回傳 DEMO);`src/lib/demo/*` DEMO 範例
+- `src/lib/types.ts` 畫面資料型別;`src/lib/data/*` 伺服器端資料來源;`src/lib/demo/*` DEMO 範例(只在未設定資料庫時使用)
+- `src/lib/db.ts` Supabase 存取(server-only);`src/lib/data/fromItems.ts` 資料庫 items → 畫面型別(有單元測試)
+- `src/lib/github.ts` GitHub 進度(唯讀 API;`buildProgress` 有單元測試);`src/lib/data/github.ts` 10 分鐘快取,
+  正式環境(`VERCEL`)或有 token 時讀真實資料,否則 DEMO;讀取失敗顯示原因 + 無資料
+- `src/app/import/` 匯入頁、server actions(`actions.ts`)、歷史版本與還原
 - `scripts/check-secrets.mjs` key 掃描
 - `docs/` 計畫與文件
 
@@ -86,9 +92,9 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
 - [x] 1. 骨架 + 登入
 - [x] 2. 頁面 1(DEMO)
 - [x] 3. 頁面 2 real / paper(DEMO)
-- [x] 4. JSON 匯入 + 歷史還原 + Supabase 建表 + Grok 格式說明 — 待使用者設定 secret key 並確認
+- [x] 4. JSON 匯入 + 歷史還原 + Supabase 建表 + Grok 格式說明(2026-11-20 使用者實測匯入成功)
 - [x] 5. 部署 Vercel(已提前完成,2026-11-20 使用者實測 GitHub 登入成功)
-- [ ] 6. GitHub 進度
+- [x] 6. GitHub 進度(讀 GitHub API,10 分鐘快取;建議設定 `GITHUB_READ_TOKEN`)— 待使用者確認
 - [ ] 7. 各服務用量 adapter(依可行性調查)
 
 ## AI 用量可行性(初步,第 7 階段實測)

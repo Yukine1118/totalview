@@ -40,6 +40,11 @@ export default async function Home() {
         isDemo={github.isDemo}
         right={<DataTime fresh={evaluateFreshness(github.data.asOf, FRESHNESS.github, now)} now={now} />}
       >
+        {github.error && (
+          <p role="alert" className="mb-2 rounded-md border border-warn/60 bg-warn/10 px-3 py-2 text-sm text-warn">
+            {github.error}
+          </p>
+        )}
         <GithubProgressCard data={github.data} now={now} />
       </Section>
     </AppShell>

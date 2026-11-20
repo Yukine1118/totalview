@@ -43,7 +43,7 @@ export type GithubProgress = {
 };
 
 /** 每個區塊的資料 + 是否為 DEMO 範例 */
-export type Section<T> = { isDemo: boolean; data: T };
+export type Section<T> = { isDemo: boolean; data: T; /** 讀取失敗的原因(顯示給使用者) */ error?: string };
 
 export type Overview = {
   aiUsage: Section<AiUsage[]>;
