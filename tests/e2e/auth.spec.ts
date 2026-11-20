@@ -2,7 +2,15 @@ import { expect, test } from "@playwright/test";
 import { loginAs } from "./helpers";
 
 // 之後每加一個頁面 / API,就加進這兩個清單
-const PAGES = ["/", "/portfolio/real", "/portfolio/paper", "/import", "/import/history", "/does-not-exist"];
+const PAGES = [
+  "/",
+  "/portfolio/real",
+  "/portfolio/paper",
+  "/import",
+  "/import/history",
+  "/import/history/00000000-0000-0000-0000-000000000000",
+  "/does-not-exist",
+];
 const APIS = ["/api/me", "/api/anything"];
 
 test.describe("未登入", () => {

@@ -1,0 +1,498 @@
+{
+  "$ref": "#/definitions/aiwr-v1",
+  "definitions": {
+    "aiwr-v1": {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "type": "string",
+          "const": "aiwr/v1"
+        },
+        "bot": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "generated_at": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "bot_status": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "warn",
+                "stop"
+              ]
+            },
+            "last_run_at": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "as_of": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+            }
+          },
+          "required": [
+            "status",
+            "last_run_at",
+            "as_of"
+          ],
+          "additionalProperties": false
+        },
+        "ai_usage": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "service": {
+                "type": "string",
+                "enum": [
+                  "Claude Pro",
+                  "Gemini Pro",
+                  "Grok Premium",
+                  "Google AI Studio"
+                ]
+              },
+              "used_pct": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reset_at": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "manual"
+                ],
+                "default": "manual"
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "as_of": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+              }
+            },
+            "required": [
+              "service",
+              "used_pct",
+              "as_of"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        },
+        "positions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "account": {
+                "type": "string",
+                "enum": [
+                  "real",
+                  "paper"
+                ]
+              },
+              "as_of": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "market": {
+                      "type": "string",
+                      "enum": [
+                        "TW",
+                        "CRYPTO"
+                      ]
+                    },
+                    "symbol": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 20
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "qty": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "avg_cost": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "last_price": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "currency": {
+                      "type": "string",
+                      "pattern": "^[A-Z]{3,5}$"
+                    },
+                    "price_as_of": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "market",
+                    "symbol",
+                    "qty",
+                    "avg_cost",
+                    "last_price",
+                    "currency",
+                    "price_as_of"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 500
+              }
+            },
+            "required": [
+              "account",
+              "as_of",
+              "items"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 2
+        },
+        "trades": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "account": {
+                "type": "string",
+                "enum": [
+                  "real",
+                  "paper"
+                ]
+              },
+              "market": {
+                "type": "string",
+                "enum": [
+                  "TW",
+                  "CRYPTO"
+                ]
+              },
+              "symbol": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20
+              },
+              "side": {
+                "type": "string",
+                "enum": [
+                  "buy",
+                  "sell"
+                ]
+              },
+              "qty": {
+                "type": "number",
+                "minimum": 0
+              },
+              "price": {
+                "type": "number",
+                "minimum": 0
+              },
+              "fee": {
+                "type": "number",
+                "minimum": 0
+              },
+              "currency": {
+                "type": "string",
+                "pattern": "^[A-Z]{3,5}$"
+              },
+              "executed_at": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            },
+            "required": [
+              "account",
+              "market",
+              "symbol",
+              "side",
+              "qty",
+              "price",
+              "currency",
+              "executed_at"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 500
+        },
+        "equity_snapshots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "account": {
+                "type": "string",
+                "enum": [
+                  "real",
+                  "paper"
+                ]
+              },
+              "market": {
+                "type": "string",
+                "enum": [
+                  "TW",
+                  "CRYPTO"
+                ]
+              },
+              "currency": {
+                "type": "string",
+                "pattern": "^[A-Z]{3,5}$"
+              },
+              "equity": {
+                "type": "number"
+              },
+              "cash": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "as_of": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+              }
+            },
+            "required": [
+              "account",
+              "market",
+              "currency",
+              "equity",
+              "as_of"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 500
+        },
+        "strategies": {
+          "type": "object",
+          "properties": {
+            "as_of": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "market": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "return_pct": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "max_drawdown_pct": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "maximum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "trades": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "oos_return_pct": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "oos_period": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "curve": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "maxItems": 400
+                  }
+                },
+                "required": [
+                  "name",
+                  "market",
+                  "return_pct",
+                  "max_drawdown_pct",
+                  "trades",
+                  "oos_return_pct"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 100
+            }
+          },
+          "required": [
+            "as_of",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "as_of": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+            }
+          },
+          "required": [
+            "text",
+            "as_of"
+          ],
+          "additionalProperties": false
+        },
+        "fx_rates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "base": {
+                "type": "string",
+                "pattern": "^[A-Z]{3,5}$"
+              },
+              "quote": {
+                "type": "string",
+                "pattern": "^[A-Z]{3,5}$"
+              },
+              "rate": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "as_of": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$"
+              }
+            },
+            "required": [
+              "base",
+              "quote",
+              "rate",
+              "source",
+              "as_of"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 20
+        }
+      },
+      "required": [
+        "schema",
+        "bot",
+        "generated_at"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

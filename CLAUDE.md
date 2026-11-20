@@ -34,7 +34,15 @@ v2 保留 v1 的資訊與風格:**單欄(最寬 980px)、卡片(圓角 10px)、�
 - 第一版:Grok bot 回報最後附固定格式 JSON(schema `aiwr/v1`,外包 `===AIWR-BEGIN===` / `===AIWR-END===`),使用者複製後登入貼上。
   區塊:ai_usage、bot_status、positions、trades、equity_snapshots、strategies;每筆都有 bot 名稱與資料時間(含時區)。
 - 給 Grok 的格式說明:`docs/grok-output-format.md`(第 4 階段產出)。
-- 資料庫:Supabase,所有表開 RLS 且無公開 policy;每次匯入是一個版本,還原 = 把舊版本複製成新版本(只增不刪)。
+- 資料庫:Supabase 專案 `ai-war-room`(ref `owptjogmzkxdktkjkmmg`,東京 ap-northeast-1;與另一個 app 的專案分開)。
+  - 結構在 `supabase/migrations/`:`aiwr_imports`(每次匯入一個版本,存原文)、`aiwr_items`(拆開的資料)、
+    view `aiwr_current`(每個 bot+kind+key 最新且未還原的一筆)、函式 `aiwr_import` / `aiwr_restore`。
+  - 所有表開 RLS 且無 policy(advisor 的 INFO「RLS enabled no policy」是刻意的);anon/authenticated 沒有任何權限。
+  - 還原 = 把舊版本複製成新版本,並把「之後同 bot 的資料」標記 reverted(只增不刪)。
+  - 有設定 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` → 網站只顯示真實資料(沒有就「無資料」);沒設定 → DEMO。
+- 匯入格式定義:`src/lib/import/schema.ts`(zod);解析與行號:`src/lib/import/parse.ts`。
+  改格式時同步更新 `docs/grok-output-format.md` 並執行 `npm run gen:schema`(產生 `docs/aiwr-v1.schema.json`)。
+  單元測試會檢查說明文件裡的範例都能匯入。
 
 ## 部署
 - Vercel 專案 `ai-war-room`(帳號 yukine1118),正式網址 https://ai-war-room-gamma.vercel.app
@@ -77,8 +85,8 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
 ## 階段進度
 - [x] 1. 骨架 + 登入
 - [x] 2. 頁面 1(DEMO)
-- [x] 3. 頁面 2 real / paper(DEMO)— 待使用者確認
-- [ ] 4. JSON 匯入 + 歷史還原 + Supabase 建表 + Grok 格式說明
+- [x] 3. 頁面 2 real / paper(DEMO)
+- [x] 4. JSON 匯入 + 歷史還原 + Supabase 建表 + Grok 格式說明 — 待使用者設定 secret key 並確認
 - [x] 5. 部署 Vercel(已提前完成,2026-11-20 使用者實測 GitHub 登入成功)
 - [ ] 6. GitHub 進度
 - [ ] 7. 各服務用量 adapter(依可行性調查)
@@ -93,6 +101,7 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
 原則:不爬蟲、不用登入 cookie、不違反服務條款;每個服務一個 adapter。
 
 ## 待辦(第二版,先不做)
+- [ ] 匯入頁加「交易紀錄」顯示頁(目前 trades 只存進資料庫,畫面尚未使用)。
 - [ ] 評估改用 GitHub Actions 定時呼叫 xAI API 執行 bot 邏輯,直接寫入資料庫,做到全自動。
   - 需評估:xAI API 費用、bot 邏輯能否脫離 Grok 對話、寫入端點的驗證方式(獨立的寫入 token,只能寫不能讀)、失敗通知。
 

@@ -1,0 +1,66 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { expect, test } from "@playwright/test";
+import { loginAs } from "./helpers";
+
+const twoBots = readFileSync(path.join(__dirname, "../fixtures/two-bots.txt"), "utf8");
+
+test.describe("匯入頁(未設定資料庫 → 只能檢查格式)", () => {
+  test.beforeEach(async ({ context }) => {
+    await loginAs(context, "Yukine1118", "424242");
+  });
+
+  test("正確內容:辨識兩個 bot 並顯示預覽", async ({ page }) => {
+    await page.goto("/import");
+    await page.getByLabel("JSON 資料").fill(twoBots);
+    await page.getByRole("button", { name: "檢查格式並預覽" }).click();
+    await expect(page.getByText("格式檢查通過,共 2 個 bot")).toBeVisible();
+    await expect(page.locator('[data-preview-bot="台股模擬交易室"]')).toContainText("模擬持股");
+    await expect(page.locator('[data-preview-bot="幣圈情報員"]')).toContainText("USDT/TWD");
+    await expect(page.getByRole("button", { name: "確認匯入" })).toBeDisabled();
+    await expect(page.getByText("資料庫尚未設定")).toBeVisible();
+  });
+
+  test("錯誤內容:列出第幾行,點一下會選取那一行", async ({ page }) => {
+    await page.goto("/import");
+    const bad = twoBots.replace('"qty": 3000', '"qty": "3000股"');
+    const box = page.getByLabel("JSON 資料");
+    await box.fill(bad);
+    await page.getByRole("button", { name: "檢查格式並預覽" }).click();
+    const errors = page.getByTestId("import-errors");
+    await expect(errors).toContainText("第 19 行");
+    await expect(errors).toContainText("positions[0].items[0].qty");
+    await expect(page.getByRole("button", { name: "確認匯入" })).toHaveCount(0);
+    await errors.getByRole("button", { name: /第 19 行/ }).click();
+    const selected = await box.evaluate((el: HTMLTextAreaElement) => el.value.slice(el.selectionStart, el.selectionEnd));
+    expect(selected).toContain('"qty": "3000股"');
+  });
+
+  test("修改內容後要重新檢查", async ({ page }) => {
+    await page.goto("/import");
+    const box = page.getByLabel("JSON 資料");
+    await box.fill(twoBots);
+    await page.getByRole("button", { name: "檢查格式並預覽" }).click();
+    await expect(page.getByText("格式檢查通過")).toBeVisible();
+    await box.press("End");
+    await box.type(" ");
+    await expect(page.getByText("內容已修改,請重新按")).toBeVisible();
+  });
+
+  test("歷史頁:未設定資料庫時有提示", async ({ page }) => {
+    await page.goto("/import/history");
+    await expect(page.getByText("資料庫尚未設定")).toBeVisible();
+  });
+
+  test("截圖", async ({ page }, info) => {
+    await page.goto("/import");
+    await page.getByLabel("JSON 資料").fill(twoBots.replace('"qty": 3000', '"qty": "3000股"').replace("+08:00\",\n  \"bot_status\": { \"status\": \"warn\"", "\",\n  \"bot_status\": { \"status\": \"warn\""));
+    await page.getByRole("button", { name: "檢查格式並預覽" }).click();
+    await expect(page.getByTestId("import-errors")).toBeVisible();
+    await page.screenshot({ path: `screenshots/stage4-import-errors-${info.project.name}.png`, fullPage: true });
+    await page.getByLabel("JSON 資料").fill(twoBots);
+    await page.getByRole("button", { name: "檢查格式並預覽" }).click();
+    await expect(page.getByText("格式檢查通過")).toBeVisible();
+    await page.screenshot({ path: `screenshots/stage4-import-preview-${info.project.name}.png`, fullPage: true });
+  });
+});

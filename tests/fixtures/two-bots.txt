@@ -1,0 +1,48 @@
+今天的模擬交易報告如下……(Grok 的其他文字,會被忽略)
+
+===AIWR-BEGIN===
+{
+  "schema": "aiwr/v1",
+  "bot": "台股模擬交易室",
+  "generated_at": "2026-11-20T14:35:00+08:00",
+  "bot_status": {
+    "status": "ok",
+    "last_run_at": "2026-11-20T14:30:00+08:00",
+    "note": "收盤後帳本已更新",
+    "as_of": "2026-11-20T14:30:00+08:00"
+  },
+  "positions": [
+    {
+      "account": "paper",
+      "as_of": "2026-11-20T13:30:00+08:00",
+      "items": [
+        { "market": "TW", "symbol": "2317", "name": "鴻海", "qty": 3000, "avg_cost": 205, "last_price": 212.5, "currency": "TWD", "price_as_of": "2026-11-20T13:30:00+08:00" }
+      ]
+    }
+  ],
+  "equity_snapshots": [
+    { "account": "paper", "market": "TW", "currency": "TWD", "equity": 917500, "cash": 280000, "as_of": "2026-11-20T13:30:00+08:00" }
+  ],
+  "strategies": {
+    "as_of": "2026-11-20T14:30:00+08:00",
+    "items": [
+      { "name": "趨勢均線", "market": "台股", "return_pct": 0.8, "max_drawdown_pct": -1.87, "trades": 12, "oos_return_pct": null, "curve": [100, 100.3, 100.8] }
+    ]
+  },
+  "summary": { "text": "今日加碼鴻海 1 張。", "as_of": "2026-11-20T14:30:00+08:00" }
+}
+===AIWR-END===
+
+中間的文字也會被忽略
+
+===AIWR-BEGIN===
+```json
+{
+  "schema": "aiwr/v1",
+  "bot": "幣圈情報員",
+  "generated_at": "2026-11-20T08:10:00+08:00",
+  "bot_status": { "status": "warn", "last_run_at": "2026-11-20T08:00:00+08:00", "note": "Reddit 讀不到", "as_of": "2026-11-20T08:00:00+08:00" },
+  "fx_rates": [ { "base": "USDT", "quote": "TWD", "rate": 32.1, "source": "交易所報價", "as_of": "2026-11-20T08:00:00+08:00" } ]
+}
+```
+===AIWR-END===

@@ -103,6 +103,9 @@ body {
 .num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  /* 關掉連字:避免 === 被畫成一條長線、-> 變箭頭 */
+  font-variant-ligatures: none;
+  font-feature-settings: "calt" 0, "liga" 0;
 }
 
 :focus-visible {
