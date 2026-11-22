@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAllowedSession } from "@/auth";
 import { AppShell } from "@/components/AppShell";
@@ -27,7 +28,15 @@ export default async function Home() {
         </p>
       )}
 
-      <Section title="AI 額度" isDemo={aiUsage.isDemo}>
+      <Section
+        title="AI 額度"
+        isDemo={aiUsage.isDemo}
+        right={
+          <Link href="/import/usage" className="text-sm text-accent underline">
+            手動更新
+          </Link>
+        }
+      >
         <UsageCards items={aiUsage.data} now={now} />
       </Section>
 

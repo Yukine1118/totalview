@@ -84,7 +84,8 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
 - `src/lib/db.ts` Supabase 存取(server-only);`src/lib/data/fromItems.ts` 資料庫 items → 畫面型別(有單元測試)
 - `src/lib/github.ts` GitHub 進度(唯讀 API;`buildProgress` 有單元測試);`src/lib/data/github.ts` 10 分鐘快取,
   正式環境(`VERCEL`)或有 token 時讀真實資料,否則 DEMO;讀取失敗顯示原因 + 無資料
-- `src/app/import/` 匯入頁、server actions(`actions.ts`)、歷史版本與還原
+- `src/app/import/` 匯入頁、server actions(`actions.ts`)、歷史版本與還原、`instructions/`(產生 bot 指令)、`usage/`(手動更新 AI 用量)
+- `src/lib/usage/` AI 用量 adapter 與手動表單 → JSON(`manualReport.ts`)
 - `scripts/check-secrets.mjs` key 掃描
 - `docs/` 計畫與文件
 
@@ -96,19 +97,18 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
 - [x] 5. 部署 Vercel(已提前完成,2026-11-20 使用者實測 GitHub 登入成功)
 - [x] 6. GitHub 進度(讀 GitHub API,10 分鐘快取;`GITHUB_READ_TOKEN` 已設定)
 - [x] 6b. 「產生 bot 指令」工具 `/import/instructions`(`src/lib/import/instructions.ts`;單元測試跑遍 511 種區塊組合 × 2 市場,保證範例能匯入)
-- [ ] 7. 各服務用量 adapter(依可行性調查)
+- [x] 7. 各服務用量 adapter:四個都是手動(查證結果見 `docs/ai-usage-feasibility.md`);`/import/usage` 手動更新表單 — 待使用者確認
 
-## AI 用量可行性(初步,第 7 階段實測)
-| 服務 | 結論 |
-|---|---|
-| Claude Pro | 無公開 API 查訂閱額度 → 手動。選配:本機腳本讀 Claude Code 的 `~/.claude/projects` JSONL 後主動推送 |
-| Gemini Pro(訂閱) | 無公開 API → 手動 |
-| Grok Premium | 無公開 API → 手動 |
-| Google AI Studio / Gemini API | 可能可用 Cloud Monitoring API 唯讀查詢,需驗證;不行就手動 |
-原則:不爬蟲、不用登入 cookie、不違反服務條款;每個服務一個 adapter。
+## AI 用量(第 7 階段結論,2026-11 查證)
+- 每個服務一個 adapter:`src/lib/usage/adapters/*.ts`,登記在 `src/lib/usage/index.ts`(`USAGE_ADAPTERS`)。
+- 四個服務目前都是 **manual**(讀最新一筆匯入的 `ai_usage`);沒有官方 API 可查訂閱額度。詳見 `docs/ai-usage-feasibility.md`。
+- 手動更新:`/import/usage` 表單 → 產生 aiwr/v1 JSON(bot `manual`)→ 走同一條匯入流程(有歷史版本、可還原)。
+- Google AI Studio 可能可用 Cloud Monitoring 自動化,需使用者提供 GCP 專案與唯讀服務帳號,且要先實測。
+- 原則:不爬蟲、不用登入 cookie、不違反服務條款;讀不到就 `usedPct: null`,不猜。
 
 ## 待辦(第二版,先不做)
 - [ ] 匯入頁加「交易紀錄」顯示頁(目前 trades 只存進資料庫,畫面尚未使用)。
+- [ ] (選做)Google AI Studio 用量改自動:Cloud Monitoring API + 唯讀服務帳號,先實測免費方案是否有數據。
 - [ ] 評估改用 GitHub Actions 定時呼叫 xAI API 執行 bot 邏輯,直接寫入資料庫,做到全自動。
   - 需評估:xAI API 費用、bot 邏輯能否脫離 Grok 對話、寫入端點的驗證方式(獨立的寫入 token,只能寫不能讀)、失敗通知。
 

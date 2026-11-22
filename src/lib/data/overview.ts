@@ -1,7 +1,8 @@
 import "server-only";
 import { fetchCurrentItems, isDbConfigured } from "@/lib/db";
 import { demoOverview } from "@/lib/demo/overview";
-import { toAiUsage, toBotStatuses } from "@/lib/data/fromItems";
+import { toBotStatuses } from "@/lib/data/fromItems";
+import { readAllUsage } from "@/lib/usage";
 import { getGithubSection } from "@/lib/data/github";
 import type { Overview } from "@/lib/types";
 
@@ -17,7 +18,7 @@ export async function getOverview(now: Date = new Date()): Promise<Overview> {
 
   const items = await fetchCurrentItems();
   return {
-    aiUsage: { isDemo: false, data: toAiUsage(items) },
+    aiUsage: { isDemo: false, data: await readAllUsage(items, now) },
     bots: { isDemo: false, data: toBotStatuses(items) },
     github,
   };

@@ -90,3 +90,23 @@ test.describe("產生 bot 指令", () => {
     await expect(page.getByText("格式檢查通過,共 1 個 bot")).toBeVisible();
   });
 });
+
+test.describe("手動更新 AI 用量", () => {
+  test.beforeEach(async ({ context }) => {
+    await loginAs(context, "Yukine1118", "424242");
+  });
+
+  test("四個服務都有欄位與「去哪裡看」;改數字會自動勾選;未設定資料庫時不能儲存", async ({ page }, info) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: "手動更新" }).click();
+    await expect(page).toHaveURL(/\/import\/usage$/);
+    for (const s of ["Claude Pro", "Gemini Pro", "Grok Premium", "Google AI Studio"]) {
+      await expect(page.locator(`[data-usage-row="${s}"]`)).toContainText("去哪裡看");
+    }
+    await page.getByLabel("Claude Pro 已用百分比").fill("42");
+    await expect(page.getByRole("button", { name: "更新 1 個服務" })).toBeDisabled(); // 沒有資料庫
+    await page.getByLabel("Grok Premium 已用百分比").fill("150");
+    await expect(page.getByText("Grok Premium 的已用 % 要是 0–100 的數字")).toBeVisible();
+    await page.screenshot({ path: `screenshots/stage7-usage-${info.project.name}.png`, fullPage: true });
+  });
+});

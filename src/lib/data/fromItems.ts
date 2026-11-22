@@ -1,6 +1,7 @@
 import type { z } from "zod";
+import { latestManual } from "@/lib/usage/adapters/manual";
+import { AI_SERVICES } from "@/lib/usage/types";
 import type {
-  aiUsageSchema,
   botStatusSchema,
   equitySchema,
   fxSchema,
@@ -27,27 +28,11 @@ import type {
 
 type Item = { bot: string; kind: string; key: string; as_of: string; payload: unknown };
 
-export const AI_SERVICES = ["Claude Pro", "Gemini Pro", "Grok Premium", "Google AI Studio"] as const;
-
 const latestFirst = (a: Item, b: Item) => new Date(b.as_of).getTime() - new Date(a.as_of).getTime();
 
+/** AI 用量:四個服務都在,沒有資料就是 null(實際讀取邏輯在 lib/usage 的 adapter) */
 export function toAiUsage(items: Item[]): AiUsage[] {
-  return AI_SERVICES.map((service) => {
-    const hit = items.filter((i) => i.kind === "ai_usage" && i.key === service).sort(latestFirst)[0];
-    if (!hit) {
-      return { service, usedPct: null, resetAt: null, source: "manual", bot: "", asOf: null };
-    }
-    const p = hit.payload as z.infer<typeof aiUsageSchema>;
-    return {
-      service,
-      usedPct: p.used_pct,
-      resetAt: p.reset_at ?? null,
-      source: p.source,
-      bot: hit.bot,
-      asOf: p.as_of,
-      note: p.note,
-    };
-  });
+  return AI_SERVICES.map((service) => latestManual(service, items));
 }
 
 export function toBotStatuses(items: Item[]): BotStatus[] {
