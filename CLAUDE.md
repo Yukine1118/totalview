@@ -94,7 +94,8 @@ E2E 測試用 `tests/e2e/helpers.ts` 的 `loginAs()` 以測試密鑰產生 sessi
 - [x] 3. 頁面 2 real / paper(DEMO)
 - [x] 4. JSON 匯入 + 歷史還原 + Supabase 建表 + Grok 格式說明(2026-11-20 使用者實測匯入成功)
 - [x] 5. 部署 Vercel(已提前完成,2026-11-20 使用者實測 GitHub 登入成功)
-- [x] 6. GitHub 進度(讀 GitHub API,10 分鐘快取;建議設定 `GITHUB_READ_TOKEN`)— 待使用者確認
+- [x] 6. GitHub 進度(讀 GitHub API,10 分鐘快取;`GITHUB_READ_TOKEN` 已設定)
+- [x] 6b. 「產生 bot 指令」工具 `/import/instructions`(`src/lib/import/instructions.ts`;單元測試跑遍 511 種區塊組合 × 2 市場,保證範例能匯入)
 - [ ] 7. 各服務用量 adapter(依可行性調查)
 
 ## AI 用量可行性(初步,第 7 階段實測)

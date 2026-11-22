@@ -8,6 +8,7 @@ const PAGES = [
   "/portfolio/paper",
   "/import",
   "/import/history",
+  "/import/instructions",
   "/import/history/00000000-0000-0000-0000-000000000000",
   "/does-not-exist",
 ];

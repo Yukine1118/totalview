@@ -64,3 +64,29 @@ test.describe("匯入頁(未設定資料庫 → 只能檢查格式)", () => {
     await page.screenshot({ path: `screenshots/stage4-import-preview-${info.project.name}.png`, fullPage: true });
   });
 });
+
+test.describe("產生 bot 指令", () => {
+  test.beforeEach(async ({ context }) => {
+    await loginAs(context, "Yukine1118", "424242");
+  });
+
+  test("輸入名稱、勾選區塊 → 產生的指令可以直接通過匯入檢查", async ({ page }, info) => {
+    await page.goto("/import/instructions");
+    await expect(page.getByRole("button", { name: "複製指令" })).toBeDisabled();
+    await page.getByLabel("bot 名稱").fill("幣圈情報員");
+    await page.getByLabel(/真實持股/).check();
+    await page.getByLabel(/匯率/).check();
+    await page.getByLabel(/加密貨幣/).check();
+    const text = await page.getByLabel("產生的指令").inputValue();
+    expect(text).toContain('"bot": "幣圈情報員"');
+    expect(text).toContain('"account": "real"');
+    expect(text).not.toContain('"strategies"');
+    await page.screenshot({ path: `screenshots/stage6-instructions-${info.project.name}.png`, fullPage: true });
+
+    // 把產生的指令貼到匯入頁檢查
+    await page.goto("/import");
+    await page.getByLabel("JSON 資料").fill(text);
+    await page.getByRole("button", { name: "檢查格式並預覽" }).click();
+    await expect(page.getByText("格式檢查通過,共 1 個 bot")).toBeVisible();
+  });
+});

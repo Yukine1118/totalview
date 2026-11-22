@@ -92,6 +92,9 @@ export function ImportForm({ dbReady }: { dbReady: boolean }) {
         <Link href="/import/history" className="text-sm text-muted underline">
           歷史版本與還原
         </Link>
+        <Link href="/import/instructions" className="text-sm text-muted underline">
+          產生 bot 指令
+        </Link>
         <a href="https://github.com/Yukine1118/totalview/blob/HEAD/docs/grok-output-format.md" target="_blank" rel="noreferrer" className="text-sm text-muted underline">
           格式說明
         </a>

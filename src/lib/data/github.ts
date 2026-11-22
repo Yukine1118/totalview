@@ -7,8 +7,10 @@ import type { GithubProgress, Section } from "@/lib/types";
 const owner = () => process.env.GITHUB_OWNER || process.env.ALLOWED_GITHUB_LOGIN || "Yukine1118";
 
 /** 10 分鐘內重複打開頁面,直接用快取(不會一直呼叫 GitHub) */
+// 快取 key 包含「有沒有 token」:加上 token 後立刻改用新結果,不會沿用只含公開 repo 的舊快取
 const cached = unstable_cache(
-  async (who: string) => fetchGithubProgress(who, process.env.GITHUB_READ_TOKEN || undefined),
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 第二個參數只用來區分快取
+  async (who: string, _withToken: boolean) => fetchGithubProgress(who, process.env.GITHUB_READ_TOKEN || undefined),
   ["github-progress-v1"],
   { revalidate: 600 },
 );
@@ -22,7 +24,7 @@ const cached = unstable_cache(
 export async function getGithubSection(now: Date = new Date()): Promise<Section<GithubProgress>> {
   if (!process.env.GITHUB_READ_TOKEN && !process.env.VERCEL) return demoOverview(now).github;
   try {
-    return { isDemo: false, data: await cached(owner()) };
+    return { isDemo: false, data: await cached(owner(), Boolean(process.env.GITHUB_READ_TOKEN)) };
   } catch (e) {
     const msg = e instanceof GithubError ? e.message : "無法連線到 GitHub";
     console.error("[github]", e);
