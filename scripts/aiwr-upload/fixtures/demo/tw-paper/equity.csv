@@ -1,0 +1,4 @@
+date,strategy,cash,market_value,equity,n_pos,cum_fee,cum_tax,cum_div,max_dd
+2026-11-24,swing,50000,0,50000,0,0,7.77,0,0
+2026-11-25,swing,41000,12000,53000,1,1,7.77,0,-0.01
+2026-11-25,other,1,1,1,1,0,0,0,0

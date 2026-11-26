@@ -1,0 +1,4 @@
+strategy,code,market,shares,cost,entry_date,entry_price,last_close
+swing,2330,TWSE,1000,15000,2026-10-01,10,12
+flat,9999,TWSE,0,0,2026-10-02,1,2
+other,8888,TWSE,5,5,2026-01-01,5,5

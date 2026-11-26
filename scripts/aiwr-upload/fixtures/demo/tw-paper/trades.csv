@@ -1,0 +1,3 @@
+date,strategy,code,side,shares,open,price,notional,fee,tax,cash_after,pnl,reason
+2026-11-25,swing,2330,buy,1000,1,10,10000,1.5,3.33,41000,0,DEMO進場
+2026-11-25,other,8888,buy,1,1,9,9,9,9,9,9,LEAK

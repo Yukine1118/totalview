@@ -19,8 +19,28 @@ const columnsSchema = z
     name: z.string().min(1).optional(),
     cost_date: z.string().min(1).optional(),
     close: z.string().min(1).optional(),
+    strategy: z.string().min(1).optional(),
+    entry_price: z.string().min(1).optional(),
   })
   .strict();
+
+/** 摘要只摘某個標題底下的文字,不把整篇報告送出。 */
+const summarySchema = z
+  .object({
+    section: z.string().trim().min(1),
+    max_chars: z.number().int().positive().max(1000).default(1000),
+  })
+  .strict();
+
+const reportRefSchema = z.union([
+  z.string().min(1),
+  z
+    .object({
+      file: z.string().min(1),
+      summary: summarySchema.optional(),
+    })
+    .strict(),
+]);
 
 const strategySchema = z
   .object({
@@ -41,7 +61,14 @@ const cryptoSchema = z
     root: z.string().min(1),
     currency: z.string().regex(/^[A-Z]{3,5}$/).default("USDT"),
     start_capital: z.number().positive().default(10_000),
-    report: z.string().min(1).optional(),
+    report: reportRefSchema.optional(),
+    /** 多個策略共用的交易檔,用 strategy 欄篩選 */
+    trades: z.string().min(1).optional(),
+    equity_daily: z.string().min(1).optional(),
+    ohlc_dir: z.string().min(1).optional(),
+    /** 例如 {symbol}_1d.csv。必須含 {symbol},不可以含路徑。 */
+    ohlc_filename: z.string().min(1).default("{symbol}_1d.csv"),
+    strategy_column: z.string().min(1).default("strategy"),
     columns: columnsSchema.optional(),
     ledger_keys: z
       .object({
@@ -63,7 +90,12 @@ const twPaperSchema = z
     root: z.string().min(1),
     currency: z.string().regex(/^[A-Z]{3,5}$/).default("TWD"),
     start_capital: z.number().positive().default(50_000),
-    report: z.string().min(1).optional(),
+    report: reportRefSchema.optional(),
+    /** 多個策略共用;用 strategy 欄篩選。策略自己的路徑優先。 */
+    positions: z.string().min(1).optional(),
+    equity: z.string().min(1).optional(),
+    trades: z.string().min(1).optional(),
+    strategy_column: z.string().min(1).default("strategy"),
     columns: columnsSchema.optional(),
     strategies: z.array(strategySchema).min(1),
   })
@@ -78,6 +110,16 @@ const twRealSchema = z
     cost_means: z.enum(["unit", "total"]).default("unit"),
     holdings: z.string().min(1),
     prices: z.string().min(1).optional(),
+    /** 從報告裡的 markdown 表格讀收盤價。 */
+    prices_report: z.string().min(1).optional(),
+    price_table: z
+      .object({
+        heading: z.string().min(1).default("持股六檔收盤（證交所）"),
+        symbol: z.string().min(1).default("代號"),
+        close: z.string().min(1).default("收盤"),
+      })
+      .strict()
+      .optional(),
     columns: columnsSchema.optional(),
   })
   .strict();
@@ -87,8 +129,12 @@ const reportSchema = z
     type: z.literal("report"),
     bot: z.string().trim().min(1).max(64).optional(),
     file: z.string().min(1),
+    /** 不寫就不送摘要(不會把整篇內文送出)。 */
+    summary: summarySchema.optional(),
   })
   .strict();
+
+export type SummarySpec = z.infer<typeof summarySchema>;
 
 export const uploadConfigSchema = z
   .object({
@@ -142,6 +188,12 @@ export function parseConfig(raw: unknown): UploadConfig {
     if (source.type === "crypto_paper" || source.type === "tw_paper") {
       for (const strategy of source.strategies) {
         if (strategy.name.includes("/")) throw new UploadError(`策略名稱不可以含 / :${strategy.name}`);
+      }
+    }
+    if (source.type === "crypto_paper") {
+      if (!source.ohlc_filename.includes("{symbol}")) throw new UploadError("ohlc_filename 必須含 {symbol}");
+      if (source.ohlc_filename.includes("/") || source.ohlc_filename.includes("\\") || source.ohlc_filename.includes("..")) {
+        throw new UploadError("ohlc_filename 只能是檔名,不能含路徑");
       }
     }
   }

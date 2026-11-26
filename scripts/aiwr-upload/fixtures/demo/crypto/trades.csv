@@ -1,0 +1,4 @@
+date,strategy,symbol,side,qty,price,fee,slippage,reason
+2026-11-23,mean_reversion,BTCUSDT,buy,0.02,100,0.1,0.01,DEMO buy
+2026-11-24,mean_reversion,BTCUSDT,sell,0.01,110,,,
+2026-11-24,other_strategy,BTCUSDT,buy,9,9,9,9,LEAK
