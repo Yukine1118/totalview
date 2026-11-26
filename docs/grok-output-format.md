@@ -5,6 +5,8 @@
 > 用法:把下面「**貼進 bot 指令的段落**」整段複製,加到每個 bot 的指令最後面。
 > bot 每次回報時,會在最後附上一段固定格式的 JSON。你把那段(或整段回覆)複製,登入 AI 作戰室 →「匯入」貼上即可。
 > 可以一次貼好幾個 bot 的回報;網站會自動辨識是哪個 bot。
+>
+> 不想每次手動貼:本機腳本 `scripts/aiwr-upload` 會把 bot 的檔案編成同一種 JSON,POST 到 `/api/ingest`。做法、要你自己設的 token、以及要在 Supabase 執行的 SQL,見 `docs/ingest.md`。
 
 ---
 

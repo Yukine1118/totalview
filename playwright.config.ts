@@ -13,6 +13,9 @@ export const TEST_ENV = {
   AUTH_URL: "http://localhost:3100",
 };
 
+/** 只有 3100 有這個假 token。3101 故意不設定,用來鎖「沒 token 就 503」。 */
+export const E2E_INGEST_TOKEN = "e2e-ingest-token-not-real";
+
 const executablePath = process.env.PW_CHROMIUM_PATH || "/opt/pw-browsers/chromium";
 
 export default defineConfig({
@@ -27,11 +30,21 @@ export default defineConfig({
     { name: "desktop", use: { viewport: { width: 1280, height: 900 } } },
     { name: "mobile", use: { ...devices["iPhone 13"], browserName: "chromium", launchOptions: { executablePath } } },
   ],
-  webServer: {
-    command: "npm run start -- -p 3100",
-    url: "http://localhost:3100/login",
-    reuseExistingServer: false,
-    env: TEST_ENV,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: "npm run start -- -p 3100",
+      url: "http://localhost:3100/login",
+      reuseExistingServer: false,
+      env: { ...TEST_ENV, INGEST_TOKEN: E2E_INGEST_TOKEN },
+      timeout: 120_000,
+    },
+    {
+      // 同一個 build、沒有 INGEST_TOKEN。POST /api/ingest 必須 503。
+      command: "npm run start -- -p 3101",
+      url: "http://localhost:3101/login",
+      reuseExistingServer: false,
+      env: { ...TEST_ENV, INGEST_TOKEN: "" },
+      timeout: 120_000,
+    },
+  ],
 });

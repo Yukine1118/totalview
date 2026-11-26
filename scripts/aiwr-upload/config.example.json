@@ -1,0 +1,47 @@
+{
+  "endpoint": "https://ai-war-room-gamma.vercel.app/api/ingest",
+  "watermark": ".aiwr-watermark.json",
+  "sources": [
+    {
+      "type": "crypto_paper",
+      "parent_bot": "模擬交易室",
+      "root": "/absolute/path/to/crypto-paper-DEMO",
+      "currency": "USDT",
+      "start_capital": 10000,
+      "report": "report.md",
+      "strategies": [
+        {
+          "name": "mean_reversion",
+          "ledger": "mean_reversion/ledger.json",
+          "trades": "mean_reversion/trades.csv",
+          "equity_daily": "mean_reversion/equity_daily.csv",
+          "ohlc_dir": "ohlc"
+        }
+      ]
+    },
+    {
+      "type": "tw_paper",
+      "parent_bot": "台股模擬交易室",
+      "root": "/absolute/path/to/tw-paper-DEMO",
+      "currency": "TWD",
+      "start_capital": 50000,
+      "strategies": [
+        {
+          "name": "swing",
+          "positions": "swing/positions.csv",
+          "equity": "swing/equity.csv",
+          "trades": "swing/trades.csv"
+        }
+      ]
+    },
+    {
+      "type": "tw_real",
+      "bot": "真實持股",
+      "root": "/absolute/path/to/tw-real-DEMO",
+      "currency": "TWD",
+      "cost_means": "unit",
+      "holdings": "holdings.csv",
+      "prices": "prices.csv"
+    }
+  ]
+}

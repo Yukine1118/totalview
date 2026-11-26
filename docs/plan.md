@@ -21,7 +21,7 @@ v1 是單一 HTML,資料存在瀏覽器裡,換裝置就不見,也沒有登入保
 不建議換成別的方案:這套對「Vercel + 登入 + 雲端資料」是最直接的組合。
 
 ## 2. 安全設計(硬性原則 2、4)
-- `middleware.ts` 攔截**所有**頁面與 `/api/*`(只放行 `/login`、`/api/auth/*`、靜態檔)。未登入:頁面導去 `/login`,API 回 401,內容一律不輸出。
+- `middleware.ts` 攔截**所有**頁面與 `/api/*`(只放行 `/login`、`/api/auth/*`、靜態檔,以及後來加的精確路徑 `/api/ingest`)。未登入:頁面導去 `/login`,API 回 401,內容一律不輸出。`/api/ingest` 不靠登入,只認 `INGEST_TOKEN`,見 `docs/ingest.md`。
 - 每個 server action / API route 再檢查一次 session(雙重保險,不只靠 middleware)。
 - `signIn` callback:`profile.id === ALLOWED_GITHUB_ID` 才放行,其他帳號直接拒絕。
 - 第一個 commit 就放 `.gitignore`(`.env*`、`.vercel`、`node_modules` 等)與 `.env.example`(只有變數名稱,沒有值)。

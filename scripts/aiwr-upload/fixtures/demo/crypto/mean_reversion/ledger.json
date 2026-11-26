@@ -1,0 +1,11 @@
+{
+  "_demo": "DEMO fixture, not a real account",
+  "api_key": "not-a-real-key",
+  "as_of": "2026-11-25T01:00:00Z",
+  "cash": 1111,
+  "equity": 9999,
+  "positions": [
+    { "symbol": "BTCUSDT", "qty": 0.02, "avg_cost": 100 },
+    { "symbol": "ETHUSDT", "qty": 1, "avg_cost": 50 }
+  ]
+}

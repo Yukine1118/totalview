@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { getImport, isDbConfigured } from "@/lib/db";
 import { formatTaipei } from "@/lib/freshness";
 import { KIND_LABEL, type ImportItem } from "@/lib/import/schema";
+import { importSourceClass, importSourceLabel } from "@/lib/import/sourceLabel";
 import { RestoreForm } from "./RestoreForm";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,12 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
   return (
     <AppShell login={session.user.login} active="/import">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-[1.6rem] font-bold">版本 {formatTaipei(new Date(imp.created_at))}</h1>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h1 className="text-[1.6rem] font-bold">版本 {formatTaipei(new Date(imp.created_at))}</h1>
+          <span className={`rounded-full border px-1.5 text-xs leading-5 ${importSourceClass(imp.source)}`} data-source={imp.source}>
+            {importSourceLabel(imp.source)}
+          </span>
+        </div>
         <Link href="/import/history" className="text-sm text-muted underline">
           回歷史版本
         </Link>
@@ -51,7 +57,7 @@ export default async function ImportDetailPage({ params }: { params: Promise<{ i
       <RestoreForm importId={imp.id} bots={bots} />
 
       <details className="rounded-[10px] border border-border bg-card px-4 py-3">
-        <summary className="cursor-pointer font-bold">原始貼上內容</summary>
+        <summary className="cursor-pointer font-bold">原始內容</summary>
         <pre className="num mt-2 max-h-[480px] overflow-auto whitespace-pre-wrap break-all text-xs text-muted">{imp.raw_text}</pre>
       </details>
     </AppShell>
