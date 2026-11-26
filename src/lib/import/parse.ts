@@ -13,6 +13,9 @@ import { reportSchema, reportToItems, type ImportItem, type Report } from "./sch
 export const BEGIN = "===AIWR-BEGIN===";
 export const END = "===AIWR-END===";
 
+/** 單次匯入的字數上限(貼上與自動匯入共用) */
+export const IMPORT_MAX_CHARS = 500_000;
+
 export type ParseIssue = {
   block: number; // 第幾段(1 起算)
   bot?: string;
@@ -162,8 +165,9 @@ function parseSegment(seg: Segment, index: number): ParsedBlock {
 
 /** 把多段 JSON(可能還混著文字)整理成「段落 + 錯誤清單」 */
 export function parseImport(raw: string): ParseResult {
-  const MAX = 500_000;
-  if (raw.length > MAX) return { blocks: [], globalIssues: [`內容太長(超過 ${MAX.toLocaleString()} 字)`], ok: false };
+  if (raw.length > IMPORT_MAX_CHARS) {
+    return { blocks: [], globalIssues: [`內容太長(超過 ${IMPORT_MAX_CHARS.toLocaleString()} 字)`], ok: false };
+  }
 
   const { segments, issues } = splitSegments(raw);
   const globalIssues = [...issues];

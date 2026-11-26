@@ -42,6 +42,9 @@ next-env.d.ts
 
 # local secrets (never commit) — .env.example is the only env file allowed in git
 !.env.example
+# 本機上傳腳本的設定與交易水位(可能指向私人資料)
+/aiwr.upload.json
+.aiwr-watermark.json
 *.key
 service-account*.json
 

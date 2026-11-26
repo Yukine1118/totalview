@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test --trace off",
     "check:secrets": "node scripts/check-secrets.mjs",
+    "upload:aiwr": "tsx scripts/aiwr-upload/cli.ts",
     "gen:schema": "tsx scripts/gen-json-schema.ts"
   },
   "dependencies": {

@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { isDbConfigured, listImports } from "@/lib/db";
 import { formatTaipei } from "@/lib/freshness";
 import { KIND_LABEL, type ImportItem } from "@/lib/import/schema";
+import { importSourceClass, importSourceLabel } from "@/lib/import/sourceLabel";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +45,8 @@ export default async function HistoryPage() {
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="num font-bold">{formatTaipei(new Date(imp.created_at))}</span>
                   <span className="flex gap-1.5 text-xs">
-                    <span className={`rounded-full border px-1.5 leading-5 ${imp.source === "restore" ? "border-accent text-accent" : "border-border text-muted"}`}>
-                      {imp.source === "restore" ? "還原" : "貼上"}
+                    <span className={`rounded-full border px-1.5 leading-5 ${importSourceClass(imp.source)}`} data-source={imp.source}>
+                      {importSourceLabel(imp.source)}
                     </span>
                     {reverted > 0 && (
                       <span className="rounded-full border border-warn px-1.5 leading-5 text-warn">{reverted} 筆已被還原掉</span>

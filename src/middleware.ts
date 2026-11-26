@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { isLoginExempt } from "@/lib/auth-paths";
 import { isAllowedGithubUser } from "@/lib/allowlist";
 
 /**
  * 守門員:每一個請求(頁面 + API)都先經過這裡。
- * - 只放行 /login 與 /api/auth/*(登入流程本身)。
+ * - 只放行 /login、/api/auth/*(登入流程本身)、以及精確的 /api/ingest。
+ * - /api/ingest 不靠 GitHub 登入,改由 INGEST_TOKEN 把關;這裡只放行那一個路徑。
  * - 未登入或非允許帳號:API 回 401(不含任何資料),頁面導向 /login。
  */
-const PUBLIC_PATHS = ["/login"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  if (pathname.startsWith("/api/auth/") || PUBLIC_PATHS.includes(pathname)) {
+  if (isLoginExempt(pathname)) {
     return NextResponse.next();
   }
 

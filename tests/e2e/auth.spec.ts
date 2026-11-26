@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { loginAs } from "./helpers";
 
-// 之後每加一個頁面 / API,就加進這兩個清單
+// 之後每加一個頁面 / API,就加進這兩個清單。
+// /api/ingest 故意不在這裡:它不走 GitHub 登入,只認 INGEST_TOKEN(見 ingest.spec.ts)。
+// 路徑必須完全等於 /api/ingest,所以下面把相近路徑留在清單裡。
 const PAGES = [
   "/",
   "/portfolio/real",
@@ -13,7 +15,7 @@ const PAGES = [
   "/import/history/00000000-0000-0000-0000-000000000000",
   "/does-not-exist",
 ];
-const APIS = ["/api/me", "/api/anything"];
+const APIS = ["/api/me", "/api/anything", "/api/ingest/extra", "/api/ingests"];
 
 test.describe("未登入", () => {
   for (const path of PAGES) {
