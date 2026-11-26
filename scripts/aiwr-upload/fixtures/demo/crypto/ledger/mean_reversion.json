@@ -1,0 +1,13 @@
+{
+  "_demo": "DEMO fixture, not a real account",
+  "leak": "not-a-real-key",
+  "cash": 1111,
+  "equity": 9999,
+  "last_processed_date": "2026-11-25",
+  "sleeve_target_frac": { "BTCUSDT": 0.5 },
+  "pending": { "ETHUSDT": { "qty": 9 } },
+  "positions": {
+    "BTCUSDT": { "qty": 0.02, "avg_price": 100 },
+    "ETHUSDT": { "qty": 1, "avg_price": 50 }
+  }
+}

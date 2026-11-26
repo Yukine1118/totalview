@@ -1,2 +1,2 @@
-symbol,qty,cost,cost_date
-9999,1000,15,2026-10-01
+code,name,shares,avg_cost,status,source,as_of
+9999,DEMO股,1000,15,held,manual,2026-10-01

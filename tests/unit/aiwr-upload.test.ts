@@ -26,30 +26,38 @@ function demoConfig(endpoint = "http://127.0.0.1:9/api/ingest") {
         type: "crypto_paper",
         parent_bot: "模擬交易室",
         root: path.join(demo, "crypto"),
-        report: "report.md",
+        trades: "trades.csv",
+        equity_daily: "equity_daily.csv",
+        ohlc_dir: "ohlc",
+        ohlc_filename: "{symbol}_1d.csv",
+        report: { file: "report.md", summary: { section: "摘要", max_chars: 200 } },
         strategies: [
-          {
-            name: "mean_reversion",
-            ledger: "mean_reversion/ledger.json",
-            trades: "mean_reversion/trades.csv",
-            equity_daily: "mean_reversion/equity_daily.csv",
-            ohlc_dir: "ohlc",
-          },
-          { name: "flat", ledger: "flat/ledger.json" },
+          { name: "mean_reversion", ledger: "ledger/mean_reversion.json" },
+          { name: "flat", ledger: "ledger/flat.json" },
         ],
       },
       {
         type: "tw_paper",
         parent_bot: "台股模擬交易室",
         root: path.join(demo, "tw-paper"),
-        strategies: [{ name: "swing", positions: "swing/positions.csv", equity: "swing/equity.csv", trades: "swing/trades.csv" }],
+        positions: "positions.csv",
+        equity: "equity.csv",
+        trades: "trades.csv",
+        strategies: [{ name: "swing" }, { name: "flat" }],
       },
       {
         type: "tw_real",
         bot: "真實持股",
         root: path.join(demo, "tw-real"),
         holdings: "holdings.csv",
-        prices: "prices.csv",
+        prices_report: "report.md",
+        price_table: { heading: "持股六檔收盤（證交所）", symbol: "代號", close: "收盤" },
+      },
+      {
+        type: "report",
+        bot: "真實持股",
+        file: path.join(demo, "tw-real/report.md"),
+        summary: { section: "摘要", max_chars: 80 },
       },
     ],
   });
@@ -70,7 +78,17 @@ describe("aiwr-upload mappers (DEMO fixtures)", () => {
       expect(parseImport(raw).ok).toBe(true);
       expect(raw).not.toContain("1999-01-01");
       expect(raw).not.toContain("not-a-real-key");
-      expect(raw).not.toContain("1111");
+      expect(raw).not.toContain("DO_NOT_SEND_THIS_BODY");
+      expect(raw).not.toContain("SECRET_BODY_SHOULD_NOT_UPLOAD");
+      expect(raw).not.toContain("2222");
+      expect(raw).not.toContain("1234.5");
+      expect(raw).not.toContain("0.4321");
+      expect(raw).not.toContain("LEAK");
+      expect(raw).not.toContain("8888");
+      expect(raw).not.toContain("15000");
+      expect(raw).not.toContain("7.77");
+      expect(raw).not.toContain("3.33");
+      expect(raw).not.toContain('"symbol":"1111"');
       expect(raw).not.toContain('"equity":9999');
 
       const parent = byBot(built.reports, "模擬交易室");
@@ -89,17 +107,20 @@ describe("aiwr-upload mappers (DEMO fixtures)", () => {
       expect(sub.bot_status).toBeUndefined();
       expect(sub.strategies).toBeUndefined();
       expect(sub.summary).toBeUndefined();
-      expect(sub.positions?.[0].as_of).toBe("2026-11-25T01:00:00Z");
+      expect(sub.positions?.[0].as_of).toBe("2026-11-25T00:00:00Z");
       const btc = sub.positions?.[0].items.find((item) => item.symbol === "BTCUSDT");
       const eth = sub.positions?.[0].items.find((item) => item.symbol === "ETHUSDT");
-      expect(btc).toMatchObject({ qty: 0.02, avg_cost: 100, last_price: 123, price_as_of: "2026-11-25T00:00:00Z", currency: "USDT" });
+      expect(btc).toMatchObject({ qty: 0.02, avg_cost: 100, last_price: 123, price_as_of: "2026-11-24T00:00:00Z", currency: "USDT" });
       expect(btc?.price_as_of).not.toBe(sub.positions?.[0].as_of);
-      expect(eth).toMatchObject({ last_price: null, price_as_of: null, avg_cost: 50 });
+      expect(eth).toMatchObject({ qty: 1, last_price: null, price_as_of: null, avg_cost: 50 });
       expect(eth).not.toHaveProperty("name");
+      const first = sub.equity_snapshots?.[0];
       const last = sub.equity_snapshots?.[sub.equity_snapshots.length - 1];
-      expect(last).toMatchObject({ equity: 10500, cash: 8000, as_of: "2026-11-25T00:00:00Z" });
+      expect(first).toMatchObject({ equity: 10000, as_of: "2026-11-22T00:00:00Z" });
+      expect(first).not.toHaveProperty("cash");
+      expect(last).toMatchObject({ equity: 10500, cash: 1111, as_of: "2026-11-25T00:00:00Z" });
       expect(sub.trades).toHaveLength(2);
-      expect(sub.trades?.find((t) => t.side === "buy")?.fee).toBe(0.1);
+      expect(sub.trades?.find((t) => t.side === "buy")).toMatchObject({ fee: 0.1, note: "DEMO buy" });
       expect(sub.trades?.find((t) => t.side === "sell")).not.toHaveProperty("fee");
 
       const flat = byBot(built.reports, "模擬交易室/flat");
@@ -111,33 +132,43 @@ describe("aiwr-upload mappers (DEMO fixtures)", () => {
       const flatItem = parent.strategies?.items.find((item) => item.name === "flat");
       expect(mean).toMatchObject({ return_pct: 5, max_drawdown_pct: -10, trades: 2, oos_return_pct: null });
       expect(mean?.curve).toEqual([10000, 11000, 9900, 10500]);
-      expect(flatItem).toMatchObject({ return_pct: null, max_drawdown_pct: null, trades: null, oos_return_pct: null });
+      expect(flatItem).toMatchObject({ return_pct: null, max_drawdown_pct: null, trades: 0, oos_return_pct: null });
       expect(flatItem).not.toHaveProperty("curve");
 
       const tw = byBot(built.reports, "台股模擬交易室/swing");
-      expect(tw.positions?.[0].as_of).toBe("2026-11-20T13:30:00+08:00");
+      expect(tw.positions?.[0].as_of).toBe("2026-11-25T13:30:00+08:00");
       expect(tw.positions?.[0].items[0]).toMatchObject({
         symbol: "2330",
-        name: "DEMO台積",
+        qty: 1000,
         last_price: 12,
         price_as_of: "2026-11-25T13:30:00+08:00",
         avg_cost: 10,
       });
+      expect(tw.positions?.[0].items[0]).not.toHaveProperty("name");
       expect(tw.equity_snapshots?.[1]).toMatchObject({ equity: 53000, cash: 41000 });
+      expect(tw.trades?.[0]).toMatchObject({ fee: 1.5, price: 10, qty: 1000, note: "DEMO進場" });
+      expect(byBot(built.reports, "台股模擬交易室/flat").positions?.[0].items).toEqual([]);
+      expect(byBot(built.reports, "台股模擬交易室/flat").positions?.[0].as_of).toBe("2026-11-25T13:30:00+08:00");
       expect(byBot(built.reports, "台股模擬交易室").positions).toBeUndefined();
-      expect(byBot(built.reports, "台股模擬交易室").strategies?.items[0].return_pct).toBe(6);
+      expect(byBot(built.reports, "台股模擬交易室").strategies?.items.find((item) => item.name === "swing")?.return_pct).toBe(6);
 
       const real = byBot(built.reports, "真實持股");
-      expect(real.positions?.[0].account).toBe("real");
+      expect(real.bot_status).toMatchObject({ status: "ok", as_of: "2026-11-25T13:30:00+08:00", last_run_at: "2026-11-25T21:00:00+08:00" });
+      expect(real.bot_status).not.toHaveProperty("note");
+      expect(real.summary?.text).toBe("DEMO 短摘要只用這段。");
       expect(real.positions?.[0].as_of).toBe("2026-10-01T13:30:00+08:00");
-      expect(real.positions?.[0].items[0]).toMatchObject({
-        symbol: "9999",
-        qty: 1000,
-        avg_cost: 15,
-        last_price: 18,
-        price_as_of: "2026-11-25T13:30:00+08:00",
-      });
-      expect(real.positions?.[0].items[0]).not.toHaveProperty("name");
+      expect(real.positions?.[0].items).toEqual([
+        expect.objectContaining({
+          symbol: "9999",
+          name: "DEMO股",
+          qty: 1000,
+          avg_cost: 15,
+          last_price: 18,
+          price_as_of: "2026-11-25T13:30:00+08:00",
+        }),
+      ]);
+
+      expect(real.positions?.[0].account).toBe("real");
       expect(real.positions?.[0].as_of).not.toBe(real.positions?.[0].items[0].price_as_of);
       expect(built.warnings.some((w) => w.includes("ETHUSDT"))).toBe(true);
     } finally {
@@ -184,6 +215,7 @@ describe("aiwr-upload 防守", () => {
       "---\nproducer: a\ngenerated_at: 2026-11-20T00:00:00Z\ndata_as_of: 2026-11-19T00:00:00Z\nstatus: error\n---\nDEMO\n",
     );
     expect(draft.bot_status).toMatchObject({ status: "stop", note: "來源狀態:error", as_of: "2026-11-19T00:00:00Z", last_run_at: "2026-11-20T00:00:00Z" });
+    expect(draft.summary).toBeUndefined();
     expect(() =>
       mapReportMarkdown("---\nproducer: 別人\ngenerated_at: 2026-11-20T00:00:00Z\ndata_as_of: 2026-11-19T00:00:00Z\nstatus: ok\n---\n", "模擬交易室"),
     ).toThrow(/producer/);

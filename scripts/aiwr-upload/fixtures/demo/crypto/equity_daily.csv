@@ -1,0 +1,6 @@
+date,strategy,equity,daily_pnl,cum_return,max_drawdown,data_flag
+2026-11-22,mean_reversion,10000,1234.5,0.4321,-0.1,ok
+2026-11-23,mean_reversion,11000,1,0,0,ok
+2026-11-24,mean_reversion,9900,1,0,-0.1,ok
+2026-11-25,mean_reversion,10500,1,0.05,-0.1,ok
+2026-11-25,other_strategy,1,0,0,0,ok

@@ -2,8 +2,9 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { reportSchema, type Report } from "@/lib/import/schema";
 import { cell, maxDrawdownPct, parseNumber, returnPct } from "./columns";
-import type { CryptoSource, ReportSource, TwPaperSource, TwRealSource, UploadConfig } from "./config";
+import type { CryptoSource, ReportSource, SummarySpec, TwPaperSource, TwRealSource, UploadConfig } from "./config";
 import { parseCsv } from "./csv";
+import { closePricesFromMarkdown, extractSection, parseFrontmatter, yamlScalar } from "./frontmatter";
 import { maxIso, parseTime } from "./time";
 import { UploadError, type ClockZone, type ColumnMap, type DateOnlyRule, type Io, type Watermark } from "./types";
 
@@ -82,6 +83,20 @@ type Snap = NonNullable<Report["equity_snapshots"]>[number];
 type PosItem = NonNullable<Report["positions"]>[number]["items"][number];
 type Trade = NonNullable<Report["trades"]>[number];
 
+/** 檔案有 strategy 欄就只留這個策略;沒有該欄就整份都算(單一策略的舊檔)。 */
+function filterByStrategy(rows: Record<string, string>[], strategy: string, column: string): Record<string, string>[] {
+  if (rows.length === 0) return [];
+  const has = Object.keys(rows[0]).some((key) => key.toLowerCase() === column.toLowerCase());
+  if (!has) return rows;
+  const out: Record<string, string>[] = [];
+  for (const row of rows) {
+    const value = cell(row, [column], column);
+    if (value === undefined) throw new UploadError(`有一列的 ${column} 是空的`);
+    if (value === strategy) out.push(row);
+  }
+  return out;
+}
+
 function readEquity(
   csv: string,
   account: "paper" | "real",
@@ -90,9 +105,11 @@ function readEquity(
   dateOnly: DateOnlyRule,
   zone: ClockZone,
   columns?: ColumnMap,
+  strategy?: { name: string; column: string },
 ): Snap[] {
   const snaps: Snap[] = [];
-  for (const row of parseCsv(csv)) {
+  const rows = strategy ? filterByStrategy(parseCsv(csv), strategy.name, strategy.column) : parseCsv(csv);
+  for (const row of rows) {
     const dateRaw = cell(row, ["date", "as_of", "time", "timestamp"], columns?.date);
     const eqRaw = cell(row, ["equity", "equity_value", "total"], columns?.equity);
     if (!dateRaw || eqRaw === undefined) throw new UploadError("資產列缺少 date 或 equity");
@@ -185,16 +202,17 @@ function mapTrades(opts: {
   zone: ClockZone;
   columns?: ColumnMap;
   sent: Set<string>;
+  strategy?: { name: string; column: string };
 }): { trades: Trade[]; hashes: string[]; count: number; times: string[] } {
-  const rows = parseCsv(opts.csv);
+  const rows = opts.strategy ? filterByStrategy(parseCsv(opts.csv), opts.strategy.name, opts.strategy.column) : parseCsv(opts.csv);
   const trades: Trade[] = [];
   const hashes: string[] = [];
   const times: string[] = [];
   for (const row of rows) {
     const executedRaw = cell(row, ["executed_at", "time", "timestamp", "date"], opts.columns?.executed_at);
-    const symbol = cell(row, ["symbol", "pair", "ticker"], opts.columns?.symbol);
+    const symbol = cell(row, ["symbol", "code", "pair", "ticker", "代號"], opts.columns?.symbol);
     const sideRaw = cell(row, ["side", "direction"], opts.columns?.side);
-    const qtyRaw = cell(row, ["qty", "quantity", "size", "股數"], opts.columns?.qty);
+    const qtyRaw = cell(row, ["qty", "quantity", "size", "shares", "股數"], opts.columns?.qty);
     const priceRaw = cell(row, ["price", "fill_price"], opts.columns?.price);
     if (!executedRaw || !symbol || !sideRaw || qtyRaw === undefined || priceRaw === undefined) {
       throw new UploadError(`${opts.bot} 有一列交易缺少時間、代號、方向、數量或價格`);
@@ -209,7 +227,7 @@ function mapTrades(opts: {
     times.push(executed_at);
     const feeRaw = cell(row, ["fee", "commission"], opts.columns?.fee);
     const fee = feeRaw === undefined ? undefined : parseNumber(feeRaw, "fee");
-    const note = cell(row, ["note"], opts.columns?.note);
+    const note = cell(row, ["note", "reason"], opts.columns?.note);
     const hash = tradeHash([opts.bot, symbol, side, qty, price, fee ?? null, executed_at, opts.currency, note ?? null]);
     if (opts.sent.has(hash)) continue;
     hashes.push(hash);
@@ -231,13 +249,14 @@ function mapTrades(opts: {
   return { trades, hashes, count: rows.length, times };
 }
 
-function ohlcNames(symbol: string): string[] {
-  if (symbol.includes("..") || symbol.includes("/") || symbol.includes("\\")) {
-    const stripped = symbol.replace(/[\\/]/g, "");
-    if (!stripped || stripped.includes("..")) throw new UploadError(`代號不能拿來當檔名:${symbol}`);
-    return [`${stripped}.csv`];
+function ohlcNames(symbol: string, pattern: string): string[] {
+  const safe = symbol.includes("/") || symbol.includes("\\") ? symbol.replace(/[\\/]/g, "") : symbol;
+  if (!safe || safe.includes("..")) throw new UploadError(`代號不能拿來當檔名:${symbol}`);
+  const name = pattern.replaceAll("{symbol}", safe);
+  if (!name || name.includes("..") || name.includes("/") || name.includes("\\")) {
+    throw new UploadError(`ohlc 檔名樣式不合法:${pattern}`);
   }
-  return [`${symbol}.csv`];
+  return [name];
 }
 
 function latestClose(
@@ -264,11 +283,12 @@ function findOhlc(
   io: Io,
   dir: string,
   symbol: string,
+  pattern: string,
   columns: ColumnMap | undefined,
   dateOnly: DateOnlyRule,
   zone: ClockZone,
 ): { close: number; asOf: string } | null {
-  const hits = ohlcNames(symbol)
+  const hits = ohlcNames(symbol, pattern)
     .map((name) => path.join(dir, name))
     .filter((file) => io.exists(file));
   if (hits.length > 1) throw new UploadError(`${symbol} 對到超過一個 OHLC 檔`);
@@ -296,47 +316,47 @@ export function mapReportStatus(raw: string): { status: "ok" | "warn" | "stop"; 
   return { status, note: `來源狀態:${key}` };
 }
 
-export function parseFrontmatter(md: string): { data: Record<string, string>; body: string } {
-  const text = md.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
-  if (!text.startsWith("---\n")) throw new UploadError("報告開頭要是 --- 的 YAML frontmatter");
-  const end = text.indexOf("\n---", 4);
-  if (end < 0) throw new UploadError("報告的 frontmatter 沒有結束的 ---");
-  const raw = text.slice(4, end);
-  const body = text.slice(end + 4).replace(/^\n/, "");
-  const data: Record<string, string> = {};
-  for (const line of raw.split("\n")) {
-    if (!line.trim() || line.trim().startsWith("#")) continue;
-    const match = /^([A-Za-z0-9_]+):\s*(.*)$/.exec(line);
-    if (!match) throw new UploadError(`frontmatter 無法解析這一行:${line}`);
-    let value = match[2].trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    data[match[1]] = value;
-  }
-  return { data, body };
+export { parseFrontmatter };
+
+function resolveReport(report: string | { file: string; summary?: SummarySpec } | undefined): { file: string; summary?: SummarySpec } | undefined {
+  if (!report) return undefined;
+  if (typeof report === "string") return { file: report };
+  return report;
 }
 
-/** 報告只產生 bot_status 與 summary。bot 名稱以設定為準;和 producer 不同就報錯。 */
-export function mapReportMarkdown(md: string, botFromConfig?: string): Draft {
+/** 報告只產生 bot_status,以及設定指定的一小段摘要。不會把整篇內文送出。 */
+export function mapReportMarkdown(md: string, botFromConfig?: string, summary?: SummarySpec): Draft {
   const { data, body } = parseFrontmatter(md);
-  const producer = data.producer?.trim();
+  const producer = yamlScalar(data, "producer");
   const bot = botFromConfig || producer;
   if (!bot) throw new UploadError("報告沒有 producer,設定裡也沒有 bot 名稱");
   if (botFromConfig && producer && producer !== botFromConfig) {
     throw new UploadError(`報告 producer 是「${producer}」,設定的 bot 是「${botFromConfig}」`);
   }
-  if (!data.generated_at) throw new UploadError(`${bot} 的報告缺少 generated_at`);
-  if (!data.data_as_of) throw new UploadError(`${bot} 的報告缺少 data_as_of(不會拿 generated_at 來補)`);
-  if (!data.status) throw new UploadError(`${bot} 的報告缺少 status`);
-  const generated_at = parseTime(data.generated_at, "tw_close", "Asia/Taipei");
-  const as_of = parseTime(data.data_as_of, "tw_close", "Asia/Taipei");
-  const mapped = mapReportStatus(data.status);
-  const extra = data.note?.trim();
+  const generatedRaw = yamlScalar(data, "generated_at");
+  const dataAsOfRaw = yamlScalar(data, "data_as_of");
+  const statusRaw = yamlScalar(data, "status");
+  if (!generatedRaw) throw new UploadError(`${bot} 的報告缺少 generated_at`);
+  if (!dataAsOfRaw) throw new UploadError(`${bot} 的報告缺少 data_as_of(不會拿 generated_at 來補)`);
+  if (!statusRaw) throw new UploadError(`${bot} 的報告缺少 status`);
+  const generated_at = parseTime(generatedRaw, "tw_close", "Asia/Taipei");
+  const as_of = parseTime(dataAsOfRaw, "tw_close", "Asia/Taipei");
+  const mapped = mapReportStatus(statusRaw);
+  const extra = yamlScalar(data, "note");
   const note = [mapped.note, extra].filter(Boolean).join(";");
   if (note.length > 300) throw new UploadError(`${bot} 的狀態備註超過 300 字`);
-  const text = body.trim();
-  if (text.length > 1000) throw new UploadError(`${bot} 的摘要超過 1000 字`);
+  const warnings: string[] = [];
+  let summaryBlock: Report["summary"] | undefined;
+  if (summary) {
+    const section = extractSection(body, summary.section);
+    if (section === null) warnings.push(`${bot} 找不到摘要小節「${summary.section}」,不送 summary`);
+    else if (section) {
+      const max = Math.min(summary.max_chars, 1000);
+      const text = section.length > max ? section.slice(0, max) : section;
+      if (section.length > max) warnings.push(`${bot} 摘要超過 ${max} 字,已截成前 ${max} 字`);
+      summaryBlock = { text, as_of };
+    }
+  }
   return {
     bot,
     generated_at,
@@ -347,8 +367,8 @@ export function mapReportMarkdown(md: string, botFromConfig?: string): Draft {
       as_of,
       ...(note ? { note } : {}),
     },
-    ...(text ? { summary: { text, as_of } } : {}),
-    warnings: [],
+    ...(summaryBlock ? { summary: summaryBlock } : {}),
+    warnings,
     hashes: [],
   };
 }
@@ -377,22 +397,20 @@ function mapCrypto(source: CryptoSource, configDir: string, io: Io, wm: Watermar
     const bot = subBot(source.parent_bot, strategy.name);
     const ledger = readJsonObject(mustRead(io, resolveInside(root, strategy.ledger), "帳本"), bot);
     const keys = source.ledger_keys;
-    const asOfRaw = pickField(ledger, [keys?.as_of, "as_of", "updated_at", "timestamp", "time"].filter(Boolean) as string[]);
-    if (typeof asOfRaw !== "string") throw new UploadError(`${bot} 帳本缺少 as_of`);
+    const asOfRaw = pickField(ledger, [keys?.as_of, "last_processed_date", "as_of", "updated_at", "timestamp", "time"].filter(Boolean) as string[]);
+    if (typeof asOfRaw !== "string") throw new UploadError(`${bot} 帳本缺少 last_processed_date 或 as_of`);
     const asOf = parseTime(asOfRaw, "utc_midnight", "UTC");
     const positionsKey = keys?.positions ?? "positions";
     const rawPositions = pickField(ledger, [positionsKey, "positions", "holdings", "open_positions"]);
-    if (!Array.isArray(rawPositions)) throw new UploadError(`${bot} 帳本缺少 positions(空倉請寫 [])`);
+    const positionEntries = ledgerPositionEntries(rawPositions, bot);
 
-    const ohlcDir = strategy.ohlc_dir ? resolveInside(root, strategy.ohlc_dir) : undefined;
+    const ohlcRel = strategy.ohlc_dir ?? source.ohlc_dir;
+    const ohlcDir = ohlcRel ? resolveInside(root, ohlcRel) : undefined;
     const posItems: PosItem[] = [];
-    for (const entry of rawPositions) {
-      if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw new UploadError(`${bot} 的持倉必須是物件`);
-      const pos = entry as Record<string, unknown>;
-      const symbol = asString(pickField(pos, ["symbol", "pair", "ticker"]) ?? "", "symbol");
+    for (const { symbol, pos } of positionEntries) {
       checkSymbol(symbol);
       const qty = asNumber(pickField(pos, ["qty", "quantity", "size"]) ?? undefined, "qty");
-      const avg = asNumber(pickField(pos, ["avg_cost", "avg_entry", "entry_price", "average_price"]) ?? undefined, "avg_cost");
+      const avg = asNumber(pickField(pos, ["avg_price", "avg_cost", "avg_entry", "entry_price", "average_price"]) ?? undefined, "avg_price");
       if (qty < 0 || avg < 0) throw new UploadError(`${bot} ${symbol} 的數量或成本是負的`);
       if (qty === 0) {
         warnings.push(`${bot} ${symbol} 數量是 0,略過這筆`);
@@ -402,7 +420,7 @@ function mapCrypto(source: CryptoSource, configDir: string, io: Io, wm: Watermar
       if (typeof fileCcy === "string") checkCurrency(fileCcy, source.currency, symbol);
       let last_price: number | null = null;
       let price_as_of: string | null = null;
-      const bar = ohlcDir ? findOhlc(io, ohlcDir, symbol, source.columns, "utc_midnight", "UTC") : null;
+      const bar = ohlcDir ? findOhlc(io, ohlcDir, symbol, source.ohlc_filename, source.columns, "utc_midnight", "UTC") : null;
       if (bar) {
         last_price = bar.close;
         price_as_of = bar.asOf;
@@ -430,31 +448,36 @@ function mapCrypto(source: CryptoSource, configDir: string, io: Io, wm: Watermar
     }
     posItems.sort((a, b) => a.symbol.localeCompare(b.symbol));
 
+    const equityRel = strategy.equity_daily ?? source.equity_daily;
     let snaps: Snap[] = [];
-    if (strategy.equity_daily) {
+    if (equityRel) {
       snaps = readEquity(
-        mustRead(io, resolveInside(root, strategy.equity_daily), "權益"),
+        mustRead(io, resolveInside(root, equityRel), "權益"),
         "paper",
         "CRYPTO",
         source.currency,
         "utc_midnight",
         "UTC",
         source.columns,
+        { name: strategy.name, column: source.strategy_column },
       );
     }
     snaps = trimSnaps(snaps, bot, warnings);
+    const cashRaw = pickField(ledger, [keys?.cash, "cash", "quote_cash", "quote_balance"].filter(Boolean) as string[]);
+    const ledgerCash = cashRaw === undefined ? undefined : asNumber(cashRaw, "cash");
+    if (snaps.length > 0 && ledgerCash !== undefined) {
+      snaps = snaps.map((snap) => (Date.parse(snap.as_of) === Date.parse(asOf) && snap.cash === undefined ? { ...snap, cash: ledgerCash } : snap));
+    }
     if (snaps.length === 0) {
       const eqRaw = pickField(ledger, [keys?.equity, "equity", "equity_value", "total_equity"].filter(Boolean) as string[]);
-      const cashRaw = pickField(ledger, [keys?.cash, "cash", "quote_cash", "quote_balance"].filter(Boolean) as string[]);
       if (eqRaw !== undefined) {
-        const cash = cashRaw === undefined ? undefined : asNumber(cashRaw, "cash");
         snaps = [
           {
             account: "paper",
             market: "CRYPTO",
             currency: source.currency,
             equity: asNumber(eqRaw, "equity"),
-            ...(cash !== undefined ? { cash } : {}),
+            ...(ledgerCash !== undefined ? { cash: ledgerCash } : {}),
             as_of: asOf,
           },
         ];
@@ -467,9 +490,10 @@ function mapCrypto(source: CryptoSource, configDir: string, io: Io, wm: Watermar
     }
 
     const sent = new Set(wm.sent[bot] ?? []);
-    const tradeResult = strategy.trades
+    const tradesRel = strategy.trades ?? source.trades;
+    const tradeResult = tradesRel
       ? mapTrades({
-          csv: mustRead(io, resolveInside(root, strategy.trades), "交易"),
+          csv: mustRead(io, resolveInside(root, tradesRel), "交易"),
           bot,
           account: "paper",
           market: "CRYPTO",
@@ -478,6 +502,7 @@ function mapCrypto(source: CryptoSource, configDir: string, io: Io, wm: Watermar
           zone: "UTC",
           columns: source.columns,
           sent,
+          strategy: { name: strategy.name, column: source.strategy_column },
         })
       : { trades: [], hashes: [], count: null as number | null, times: [] as string[] };
 
@@ -488,7 +513,7 @@ function mapCrypto(source: CryptoSource, configDir: string, io: Io, wm: Watermar
         "CRYPTO",
         snaps.length ? snaps[snaps.length - 1].equity : null,
         series,
-        strategy.trades ? tradeResult.count : null,
+        tradesRel ? tradeResult.count : null,
         source.start_capital,
       ),
     );
@@ -515,10 +540,30 @@ function mapCrypto(source: CryptoSource, configDir: string, io: Io, wm: Watermar
     hashes: [],
   });
 
-  if (source.report) {
-    drafts.push(mapReportMarkdown(mustRead(io, resolveInside(root, source.report), "報告"), source.parent_bot));
-  }
+  const report = resolveReport(source.report);
+  if (report) drafts.push(mapReportMarkdown(mustRead(io, resolveInside(root, report.file), "報告"), source.parent_bot, report.summary));
   return drafts;
+}
+
+function ledgerPositionEntries(raw: unknown, bot: string): { symbol: string; pos: Record<string, unknown> }[] {
+  if (raw === undefined) throw new UploadError(`${bot} 帳本缺少 positions(空倉請寫 {} 或 [])`);
+  if (Array.isArray(raw)) {
+    return raw.map((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw new UploadError(`${bot} 的持倉必須是物件`);
+      const pos = entry as Record<string, unknown>;
+      const symbol = asString(pickField(pos, ["symbol", "pair", "ticker"]) ?? "", "symbol");
+      return { symbol, pos };
+    });
+  }
+  if (raw && typeof raw === "object") {
+    return Object.entries(raw as Record<string, unknown>)
+      .filter(([key]) => !key.startsWith("_"))
+      .map(([symbol, entry]) => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw new UploadError(`${bot} ${symbol} 的持倉必須是物件`);
+        return { symbol, pos: entry as Record<string, unknown> };
+      });
+  }
+  throw new UploadError(`${bot} 帳本的 positions 必須是以代號為鍵的物件,或陣列`);
 }
 
 function mapTwPaper(source: TwPaperSource, configDir: string, io: Io, wm: Watermark): Draft[] {
@@ -527,40 +572,61 @@ function mapTwPaper(source: TwPaperSource, configDir: string, io: Io, wm: Waterm
   const items: NonNullable<Report["strategies"]>["items"] = [];
   const metricTimes: string[] = [];
 
+  const parentWarnings: string[] = [];
   for (const strategy of source.strategies) {
-    if (!strategy.positions) throw new UploadError(`${strategy.name} 缺少 positions`);
+    const positionsRel = strategy.positions ?? source.positions;
+    if (!positionsRel) throw new UploadError(`${strategy.name} 缺少 positions`);
     const bot = subBot(source.parent_bot, strategy.name);
     const warnings: string[] = [];
-    const rows = parseCsv(mustRead(io, resolveInside(root, strategy.positions), "持股"));
-    if (rows.length === 0) throw new UploadError(`${bot} 持股檔沒有資料列。空白檔不會被當成空倉。`);
-    const posItems: PosItem[] = [];
-    const asOfs: string[] = [];
-    let mixedDates = false;
-    for (const row of rows) {
-      const symbol = cell(row, ["symbol", "ticker", "代號"], source.columns?.symbol);
-      const qtyRaw = cell(row, ["qty", "quantity", "shares", "股數"], source.columns?.qty);
-      const costRaw = cell(row, ["avg_cost", "unit_cost", "cost_price", "成本"], source.columns?.avg_cost);
-      const dateRaw = cell(row, ["as_of", "date", "snapshot_date"], source.columns?.date);
-      if (!symbol || qtyRaw === undefined || costRaw === undefined || !dateRaw) {
-        throw new UploadError(`${bot} 持股列缺少代號、數量、成本或日期`);
+    const allRows = parseCsv(mustRead(io, resolveInside(root, positionsRel), "持股"));
+    const rows = filterByStrategy(allRows, strategy.name, source.strategy_column);
+    const equityRel = strategy.equity ?? source.equity;
+    let snaps: Snap[] = [];
+    let bookDay: string | null = null;
+    if (equityRel) {
+      const equityCsv = mustRead(io, resolveInside(root, equityRel), "權益");
+      snaps = trimSnaps(
+        readEquity(equityCsv, "paper", "TW", source.currency, "tw_close", "Asia/Taipei", source.columns, {
+          name: strategy.name,
+          column: source.strategy_column,
+        }),
+        bot,
+        warnings,
+      );
+      bookDay = snaps.length ? snaps[snaps.length - 1].as_of : null;
+      if (!bookDay) {
+        const anyDay = readEquity(equityCsv, "paper", "TW", source.currency, "tw_close", "Asia/Taipei", source.columns);
+        if (anyDay.length) {
+          bookDay = anyDay[anyDay.length - 1].as_of;
+          warnings.push(`${bot} 自己沒有權益列,快照日用 equity.csv 裡最新的日期`);
+        }
       }
+    }
+    const rowDates = rows
+      .map((row) => cell(row, ["as_of", "date", "snapshot_date"], source.columns?.date))
+      .filter((value): value is string => Boolean(value));
+    if (!bookDay && rowDates.length) bookDay = maxIso(rowDates.map((value) => parseTime(value, "tw_close", "Asia/Taipei")));
+
+    const posItems: PosItem[] = [];
+    for (const row of rows) {
+      const symbol = cell(row, ["symbol", "code", "ticker", "代號"], source.columns?.symbol);
+      const qtyRaw = cell(row, ["qty", "quantity", "shares", "股數"], source.columns?.qty);
+      if (!symbol || qtyRaw === undefined) throw new UploadError(`${bot} 持股列缺少代號或數量`);
       checkSymbol(symbol);
-      checkCurrency(cell(row, ["currency"]), source.currency, symbol);
       const qty = parseNumber(qtyRaw, "qty");
-      const avg = parseNumber(costRaw, "avg_cost");
-      if (qty < 0 || avg < 0) throw new UploadError(`${bot} ${symbol} 的數量或成本是負的`);
-      const rowAsOf = parseTime(dateRaw, "tw_close", "Asia/Taipei");
-      if (asOfs.length > 0 && rowAsOf !== asOfs[0]) mixedDates = true;
-      asOfs.push(rowAsOf);
+      if (qty < 0) throw new UploadError(`${bot} ${symbol} 的數量是負的`);
       if (qty === 0) {
         warnings.push(`${bot} ${symbol} 數量是 0,略過`);
         continue;
       }
-      const closeRaw = cell(row, ["last_close", "close", "last_price", "price"], source.columns?.last_close);
+      const entryRaw = cell(row, ["entry_price"], source.columns?.entry_price);
+      const avg = entryRaw !== undefined ? parseNumber(entryRaw, "entry_price") : averageCost(row, qty, symbol, "unit", source.columns);
+      if (avg < 0) throw new UploadError(`${bot} ${symbol} 的成本是負的`);
+      const closeRaw = cell(row, ["last_close", "close", "last_price"], source.columns?.last_close);
       const priceDateRaw = cell(row, ["price_as_of", "price_date", "close_date"], source.columns?.price_date);
       const last_price = closeRaw === undefined ? null : parseNumber(closeRaw, "last_close");
-      const price_as_of = priceDateRaw === undefined ? null : parseTime(priceDateRaw, "tw_close", "Asia/Taipei");
-      if (last_price !== null && price_as_of === null) warnings.push(`${bot} ${symbol} 有現價但沒有價格日期,price_as_of 送 null`);
+      const price_as_of = priceDateRaw ? parseTime(priceDateRaw, "tw_close", "Asia/Taipei") : last_price !== null ? bookDay : null;
+      if (last_price !== null && price_as_of === null) warnings.push(`${bot} ${symbol} 有現價但沒有交易日,price_as_of 送 null`);
       const name = cell(row, ["name", "名稱"], source.columns?.name);
       if (name && name.length > 40) throw new UploadError(`${bot} ${symbol} 的名稱超過 40 字`);
       posItems.push({
@@ -574,22 +640,13 @@ function mapTwPaper(source: TwPaperSource, configDir: string, io: Io, wm: Waterm
         price_as_of,
       });
     }
-    if (mixedDates) warnings.push(`${bot} 持股列的日期不一致,as_of 用最晚的一筆;各筆價格時間仍分開`);
-    const asOf = maxIso(asOfs);
     posItems.sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-    let snaps: Snap[] = [];
-    if (strategy.equity) {
-      snaps = trimSnaps(
-        readEquity(mustRead(io, resolveInside(root, strategy.equity), "權益"), "paper", "TW", source.currency, "tw_close", "Asia/Taipei", source.columns),
-        bot,
-        warnings,
-      );
-    }
     const sent = new Set(wm.sent[bot] ?? []);
-    const tradeResult = strategy.trades
+    const tradesRel = strategy.trades ?? source.trades;
+    const tradeResult = tradesRel
       ? mapTrades({
-          csv: mustRead(io, resolveInside(root, strategy.trades), "交易"),
+          csv: mustRead(io, resolveInside(root, tradesRel), "交易"),
           bot,
           account: "paper",
           market: "TW",
@@ -598,32 +655,51 @@ function mapTwPaper(source: TwPaperSource, configDir: string, io: Io, wm: Waterm
           zone: "Asia/Taipei",
           columns: source.columns,
           sent,
+          strategy: { name: strategy.name, column: source.strategy_column },
         })
       : { trades: [] as Trade[], hashes: [] as string[], count: null as number | null, times: [] as string[] };
 
-    const series = snaps.map((snap) => snap.equity);
-    items.push(strategyItem(strategy.name, "TW", snaps.length ? snaps[snaps.length - 1].equity : null, series, strategy.trades ? tradeResult.count : null, source.start_capital));
-    metricTimes.push(asOf, ...snaps.map((snap) => snap.as_of));
-    const times = [asOf, ...posItems.flatMap((item) => (item.price_as_of ? [item.price_as_of] : [])), ...snaps.map((s) => s.as_of), ...tradeResult.times];
-    drafts.push({
-      bot,
-      generated_at: maxIso(times),
-      positions: [{ account: "paper", as_of: asOf, items: posItems }],
-      ...(snaps.length ? { equity_snapshots: snaps } : {}),
-      ...(tradeResult.trades.length ? { trades: tradeResult.trades } : {}),
-      warnings,
-      hashes: tradeResult.hashes,
-    });
+    const asOf = bookDay;
+    if (!asOf && posItems.length === 0) {
+      parentWarnings.push(`${bot} 沒有持股也沒有可當交易日的日期,這次不送持股快照`);
+      if (snaps.length || tradeResult.trades.length) {
+        const times = [...snaps.map((snap) => snap.as_of), ...tradeResult.times];
+        drafts.push({
+          bot,
+          generated_at: maxIso(times),
+          ...(snaps.length ? { equity_snapshots: snaps } : {}),
+          ...(tradeResult.trades.length ? { trades: tradeResult.trades } : {}),
+          warnings,
+          hashes: tradeResult.hashes,
+        });
+      } else parentWarnings.push(...warnings);
+    } else {
+      if (!asOf) throw new UploadError(`${bot} 有持股但找不到交易日(equity.csv 的 date,或持股列的 date)`);
+      const series = snaps.map((snap) => snap.equity);
+      items.push(strategyItem(strategy.name, "TW", snaps.length ? snaps[snaps.length - 1].equity : null, series, tradesRel ? tradeResult.count : null, source.start_capital));
+      metricTimes.push(asOf, ...snaps.map((snap) => snap.as_of));
+      const times = [asOf, ...posItems.flatMap((item) => (item.price_as_of ? [item.price_as_of] : [])), ...snaps.map((s) => s.as_of), ...tradeResult.times];
+      drafts.push({
+        bot,
+        generated_at: maxIso(times),
+        positions: [{ account: "paper", as_of: asOf, items: posItems }],
+        ...(snaps.length ? { equity_snapshots: snaps } : {}),
+        ...(tradeResult.trades.length ? { trades: tradeResult.trades } : {}),
+        warnings,
+        hashes: tradeResult.hashes,
+      });
+    }
   }
 
   drafts.push({
     bot: source.parent_bot,
     generated_at: maxIso(metricTimes),
     strategies: { as_of: maxIso(metricTimes), items: items.sort((a, b) => a.name.localeCompare(b.name)) },
-    warnings: [],
+    warnings: parentWarnings,
     hashes: [],
   });
-  if (source.report) drafts.push(mapReportMarkdown(mustRead(io, resolveInside(root, source.report), "報告"), source.parent_bot));
+  const report = resolveReport(source.report);
+  if (report) drafts.push(mapReportMarkdown(mustRead(io, resolveInside(root, report.file), "報告"), source.parent_bot, report.summary));
   return drafts;
 }
 
@@ -665,8 +741,8 @@ function mapTwReal(source: TwRealSource, configDir: string, io: Io): Draft[] {
   const prices = new Map<string, { close: number; asOf: string | null }>();
   if (source.prices) {
     for (const row of parseCsv(mustRead(io, resolveInside(root, source.prices), "收盤價"))) {
-      const symbol = cell(row, ["symbol", "ticker", "代號"], source.columns?.symbol);
-      const closeRaw = cell(row, ["close", "last_close", "price", "收盤"], source.columns?.close ?? source.columns?.last_close);
+    const symbol = cell(row, ["symbol", "code", "ticker", "代號"], source.columns?.symbol);
+    const closeRaw = cell(row, ["close", "last_close", "price", "收盤"], source.columns?.close ?? source.columns?.last_close);
       if (!symbol || closeRaw === undefined) throw new UploadError("價格檔有一列缺少代號或收盤價");
       const dateRaw = cell(row, ["date", "price_date", "as_of"], source.columns?.price_date);
       const asOf = dateRaw ? parseTime(dateRaw, "tw_close", "Asia/Taipei") : null;
@@ -676,15 +752,31 @@ function mapTwReal(source: TwRealSource, configDir: string, io: Io): Draft[] {
         prices.set(symbol, { close: parseNumber(closeRaw, "close"), asOf });
       }
     }
-  } else warnings.push(`${source.bot} 沒有價格檔,現價全部送 null`);
+  }
+  if (source.prices_report) {
+    const md = mustRead(io, resolveInside(root, source.prices_report), "收盤價報告");
+    const { data } = parseFrontmatter(md);
+    const dataAsOf = yamlScalar(data, "data_as_of");
+    const priceTime = dataAsOf ? parseTime(dataAsOf, "tw_close", "Asia/Taipei") : null;
+    if (!priceTime) warnings.push(`${source.bot} 的收盤價報告沒有 data_as_of,price_as_of 送 null`);
+    const heading = source.price_table?.heading ?? "持股六檔收盤（證交所）";
+    const symbolHeader = source.price_table?.symbol ?? "代號";
+    const closeHeader = source.price_table?.close ?? "收盤";
+    const table = closePricesFromMarkdown(md, heading, symbolHeader, closeHeader);
+    if (table.length === 0) warnings.push(`${source.bot} 在「${heading}」底下沒有讀到收盤價`);
+    for (const row of table) {
+      prices.set(row.symbol, { close: parseNumber(row.close, `${row.symbol} 收盤`), asOf: priceTime });
+    }
+  }
+  if (!source.prices && !source.prices_report) warnings.push(`${source.bot} 沒有價格來源,現價全部送 null`);
 
   const posItems: PosItem[] = [];
   const costTimes: string[] = [];
   let mixed = false;
   for (const row of rows) {
-    const symbol = cell(row, ["symbol", "ticker", "代號"], source.columns?.symbol);
+    const symbol = cell(row, ["symbol", "code", "ticker", "代號"], source.columns?.symbol);
     const qtyRaw = cell(row, ["qty", "quantity", "shares", "股數"], source.columns?.qty);
-    const dateRaw = cell(row, ["cost_date", "cost_as_of", "opened_at", "date"], source.columns?.cost_date ?? source.columns?.date);
+    const dateRaw = cell(row, ["as_of", "cost_date", "cost_as_of", "opened_at", "date"], source.columns?.cost_date ?? source.columns?.date);
     if (!symbol || !dateRaw) throw new UploadError(`${source.bot} 持股列缺少代號或成本日期`);
     if (qtyRaw === undefined) {
       throw new UploadError(`${source.bot} 缺少數量欄位(qty / shares / 股數)。不會假設股數。檔頭有:${Object.keys(row).join("、")}`);
@@ -702,7 +794,7 @@ function mapTwReal(source: TwRealSource, configDir: string, io: Io): Draft[] {
       continue;
     }
     const quote = prices.get(symbol);
-    if (source.prices && !quote) warnings.push(`${symbol} 沒有對到收盤價,現價送 null`);
+    if ((source.prices || source.prices_report) && !quote) warnings.push(`${symbol} 沒有對到收盤價,現價送 null`);
     const name = cell(row, ["name", "名稱"], source.columns?.name);
     posItems.push({
       market: "TW",
@@ -732,7 +824,7 @@ function mapTwReal(source: TwRealSource, configDir: string, io: Io): Draft[] {
 
 function mapReportSource(source: ReportSource, configDir: string, io: Io): Draft[] {
   const file = path.resolve(configDir, source.file);
-  return [mapReportMarkdown(mustRead(io, file, "報告"), source.bot)];
+  return [mapReportMarkdown(mustRead(io, file, "報告"), source.bot, source.summary)];
 }
 
 function mergeDrafts(list: Draft[]): Draft {

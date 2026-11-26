@@ -98,16 +98,13 @@ npm run upload:aiwr -- --config ./aiwr.upload.json
       "root": "/你的/加密模擬資料夾",
       "currency": "USDT",
       "start_capital": 10000,
-      "report": "report.md",
-      "strategies": [
-        {
-          "name": "mean_reversion",
-          "ledger": "mean_reversion/ledger.json",
-          "trades": "mean_reversion/trades.csv",
-          "equity_daily": "mean_reversion/equity_daily.csv",
-          "ohlc_dir": "ohlc"
-        }
-      ]
+      "trades": "trades.csv",
+      "equity_daily": "equity_daily.csv",
+      "ohlc_dir": "ohlc",
+      "ohlc_filename": "{symbol}_1d.csv",
+      "strategy_column": "strategy",
+      "report": { "file": "report.md", "summary": { "section": "摘要", "max_chars": 280 } },
+      "strategies": [{ "name": "mean_reversion", "ledger": "ledger/mean_reversion.json" }]
     },
     {
       "type": "tw_paper",
@@ -115,27 +112,25 @@ npm run upload:aiwr -- --config ./aiwr.upload.json
       "root": "/你的/台股模擬資料夾",
       "currency": "TWD",
       "start_capital": 50000,
-      "strategies": [
-        {
-          "name": "swing",
-          "positions": "swing/positions.csv",
-          "equity": "swing/equity.csv",
-          "trades": "swing/trades.csv"
-        }
-      ]
+      "positions": "positions.csv",
+      "equity": "equity.csv",
+      "trades": "trades.csv",
+      "strategy_column": "strategy",
+      "strategies": [{ "name": "swing" }]
     },
     {
       "type": "tw_real",
       "bot": "真實持股",
       "root": "/你的/真實持股資料夾",
-      "currency": "TWD",
-      "cost_means": "unit",
       "holdings": "holdings.csv",
-      "prices": "prices.csv"
+      "prices_report": "report.md",
+      "price_table": { "heading": "持股六檔收盤（證交所）", "symbol": "代號", "close": "收盤" }
     }
   ]
 }
 ```
+
+欄位對照與「哪些欄不送」見 `scripts/aiwr-upload/README.md`。交易檔、權益檔若含 `strategy` 欄,多個策略共用一份。
 
 每個模擬策略會用自己的 bot 名稱,例如 `模擬交易室/mean_reversion`,避免持股和資產曲線互蓋。
 父 bot 只送狀態、策略績效和摘要。

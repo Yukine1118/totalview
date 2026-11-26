@@ -8,15 +8,17 @@
       "root": "/absolute/path/to/crypto-paper-DEMO",
       "currency": "USDT",
       "start_capital": 10000,
-      "report": "report.md",
+      "trades": "trades.csv",
+      "equity_daily": "equity_daily.csv",
+      "ohlc_dir": "ohlc",
+      "ohlc_filename": "{symbol}_1d.csv",
+      "strategy_column": "strategy",
+      "report": {
+        "file": "report.md",
+        "summary": { "section": "摘要", "max_chars": 280 }
+      },
       "strategies": [
-        {
-          "name": "mean_reversion",
-          "ledger": "mean_reversion/ledger.json",
-          "trades": "mean_reversion/trades.csv",
-          "equity_daily": "mean_reversion/equity_daily.csv",
-          "ohlc_dir": "ohlc"
-        }
+        { "name": "mean_reversion", "ledger": "ledger/mean_reversion.json" }
       ]
     },
     {
@@ -25,14 +27,11 @@
       "root": "/absolute/path/to/tw-paper-DEMO",
       "currency": "TWD",
       "start_capital": 50000,
-      "strategies": [
-        {
-          "name": "swing",
-          "positions": "swing/positions.csv",
-          "equity": "swing/equity.csv",
-          "trades": "swing/trades.csv"
-        }
-      ]
+      "positions": "positions.csv",
+      "equity": "equity.csv",
+      "trades": "trades.csv",
+      "strategy_column": "strategy",
+      "strategies": [{ "name": "swing" }]
     },
     {
       "type": "tw_real",
@@ -41,7 +40,18 @@
       "currency": "TWD",
       "cost_means": "unit",
       "holdings": "holdings.csv",
-      "prices": "prices.csv"
+      "prices_report": "report.md",
+      "price_table": {
+        "heading": "持股六檔收盤（證交所）",
+        "symbol": "代號",
+        "close": "收盤"
+      }
+    },
+    {
+      "type": "report",
+      "bot": "真實持股",
+      "file": "/absolute/path/to/tw-real-DEMO/report.md",
+      "summary": { "section": "摘要", "max_chars": 280 }
     }
   ]
 }
